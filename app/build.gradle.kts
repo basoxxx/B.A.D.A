@@ -14,8 +14,10 @@ android {
         applicationId = "app.bada"
         minSdk = 26
         targetSdk = 36 // edge-to-edge forzato: i layout usano fitsSystemWindows
-        versionCode = 1
-        versionName = "0.1"
+        // Il numero di run della CI fa da versione: ogni build su main è più nuova della precedente.
+        val run = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1
+        versionCode = run
+        versionName = "1.0.$run"
     }
 
     signingConfigs {
@@ -36,6 +38,8 @@ android {
             signingConfig = signingConfigs.findByName("bada") ?: signingConfigs.getByName("debug")
         }
     }
+
+    buildFeatures { buildConfig = true }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

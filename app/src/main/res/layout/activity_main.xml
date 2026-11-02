@@ -4,59 +4,155 @@
     android:layout_height="match_parent"
     android:fitsSystemWindows="true"
     android:orientation="vertical"
-    android:padding="16dp">
+    android:paddingStart="16dp"
+    android:paddingTop="8dp"
+    android:paddingEnd="16dp">
 
-    <TextView
-        android:layout_width="wrap_content"
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <ImageView
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:contentDescription="@null"
+            android:src="@mipmap/ic_launcher" />
+
+        <TextView
+            style="@style/Heading"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:layout_weight="1"
+            android:text="@string/app_name" />
+
+        <ImageButton
+            android:id="@+id/menu"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Menu"
+            android:src="@drawable/ic_more" />
+    </LinearLayout>
+
+    <!-- Scheda aggiornamento: visibile solo se su GitHub c'è una versione più nuova -->
+    <LinearLayout
+        android:id="@+id/update_card"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:paddingBottom="16dp"
-        android:text="@string/app_name"
-        android:textSize="28sp" />
+        android:layout_marginTop="8dp"
+        android:background="@drawable/card"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:padding="16dp"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/update_text"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textColor="@color/text"
+            android:textSize="15sp" />
+
+        <Button
+            android:id="@+id/update_install"
+            style="@style/Btn.Primary"
+            android:layout_width="wrap_content"
+            android:layout_height="44dp"
+            android:minHeight="44dp"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:text="Installa" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:background="@drawable/card"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <TextView
+            style="@style/Label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Questa settimana" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:orientation="horizontal">
+
+            <include android:id="@+id/week_distance" layout="@layout/stat" />
+            <include android:id="@+id/week_time" layout="@layout/stat" />
+            <include android:id="@+id/week_count" layout="@layout/stat" />
+        </LinearLayout>
+    </LinearLayout>
 
     <LinearLayout
         android:id="@+id/start_buttons"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
         android:orientation="horizontal">
 
         <Button
             android:id="@+id/run"
+            style="@style/Btn.Primary"
             android:layout_width="0dp"
-            android:layout_height="72dp"
+            android:layout_height="56dp"
+            android:layout_marginEnd="6dp"
             android:layout_weight="1"
-            android:text="Corsa"
-            android:textSize="20sp" />
+            android:text="Corsa" />
 
         <Button
             android:id="@+id/bike"
+            style="@style/Btn.Primary"
             android:layout_width="0dp"
-            android:layout_height="72dp"
+            android:layout_height="56dp"
+            android:layout_marginStart="6dp"
             android:layout_weight="1"
-            android:text="Bici"
-            android:textSize="20sp" />
+            android:text="Bici" />
     </LinearLayout>
 
     <Button
         android:id="@+id/back_to_recording"
+        style="@style/Btn.Primary"
         android:layout_width="match_parent"
-        android:layout_height="72dp"
+        android:layout_height="56dp"
+        android:layout_marginTop="16dp"
         android:text="Torna alla registrazione"
-        android:textSize="20sp"
         android:visibility="gone" />
+
+    <TextView
+        style="@style/Label"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:layout_marginBottom="8dp"
+        android:text="Attività" />
 
     <TextView
         android:id="@+id/empty"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:paddingTop="32dp"
+        android:paddingTop="24dp"
         android:gravity="center"
-        android:text="Nessuna uscita registrata.\nI dati restano solo su questo telefono." />
+        android:lineSpacingExtra="4dp"
+        android:text="Nessuna attività registrata.\nI dati restano solo su questo telefono."
+        android:textColor="@color/muted" />
 
     <ListView
         android:id="@+id/list"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_marginTop="16dp"
         android:layout_weight="1"
-        android:divider="@null" />
+        android:divider="@null"
+        android:listSelector="@android:color/transparent"
+        android:scrollbars="none" />
 </LinearLayout>

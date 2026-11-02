@@ -51,12 +51,13 @@ class RecordActivity : Activity() {
         val m = Track.distanceM(ev)
         val ms = Track.activeMs(ev, System.currentTimeMillis())
         findViewById<TextView>(R.id.kind).text = if (run) "Corsa" else "Bici"
+        findViewById<TextView>(R.id.average_label).text = if (run) "Passo medio /km" else "Velocità km/h"
         findViewById<TextView>(R.id.time).text = Format.duration(ms)
-        findViewById<TextView>(R.id.distance).text = Format.distance(m)
-        findViewById<TextView>(R.id.average).text = Format.average(run, m, ms)
+        findViewById<TextView>(R.id.distance).text = Format.distance(m).removeSuffix(" km") // unità nell'etichetta
+        findViewById<TextView>(R.id.average).text = Format.average(run, m, ms).removeSuffix(" /km").removeSuffix(" km/h")
         findViewById<TextView>(R.id.status).text = when {
-            TrackingService.paused -> "In pausa"
-            ev.none { it is Fix } -> "In attesa del segnale GPS…"
+            TrackingService.paused -> "IN PAUSA"
+            ev.none { it is Fix } -> "In attesa del segnale GPS"
             else -> ""
         }
         findViewById<Button>(R.id.pause).text = if (TrackingService.paused) "Riprendi" else "Pausa"
