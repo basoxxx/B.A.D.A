@@ -44,6 +44,18 @@ class DetailActivity : Activity() {
             "%-10s %s".format(km, Format.average(run, s.m, s.ms))
         }.joinToString("\n", prefix = "Km         ${if (run) "Passo" else "Velocità"}\n")
 
+        val chart = Track.chart(ev)
+        val paceChart = findViewById<ChartView>(R.id.pace_chart)
+        if (chart.isEmpty()) paceChart.visibility = View.GONE
+        // Si disegna sempre la velocità (più in alto = più veloce); per la corsa le etichette sono in passo.
+        else paceChart.set(if (run) "Passo" else "Velocità", chart.map { it.mps }) { v ->
+            if (v <= 0) "--" else Format.average(run, v * 1000, 1_000_000L)
+        }
+        val alts = chart.mapNotNull { it.alt }
+        val altChart = findViewById<ChartView>(R.id.alt_chart)
+        if (alts.size < 2) altChart.visibility = View.GONE // uscite registrate prima dell'altitudine
+        else altChart.set("Altitudine  ·  D+ %.0f m".format(Track.climbM(chart)), alts) { "%.0f m".format(it) }
+
         map = findViewById(R.id.map)
         map.setTileSource(TileSourceFactory.MAPNIK)
         map.setMultiTouchControls(true)

@@ -17,7 +17,7 @@
         android:id="@+id/map"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="3" />
+        android:layout_weight="1" />
 
     <TextView
         android:id="@+id/no_points"
@@ -31,15 +31,33 @@
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="2">
+        android:layout_weight="1">
 
-        <TextView
-            android:id="@+id/splits"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:fontFamily="monospace"
-            android:padding="16dp"
-            android:textSize="16sp" />
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <app.bada.ChartView
+                android:id="@+id/pace_chart"
+                android:layout_width="match_parent"
+                android:layout_height="140dp" />
+
+            <app.bada.ChartView
+                android:id="@+id/alt_chart"
+                android:layout_width="match_parent"
+                android:layout_height="140dp"
+                android:layout_marginTop="16dp" />
+
+            <TextView
+                android:id="@+id/splits"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:fontFamily="monospace"
+                android:textSize="16sp" />
+        </LinearLayout>
     </ScrollView>
 
     <Button

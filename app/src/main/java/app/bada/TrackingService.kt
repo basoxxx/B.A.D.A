@@ -111,7 +111,7 @@ class TrackingService : Service(), LocationListener {
     override fun onLocationChanged(loc: Location) {
         if (file == null || paused) return
         if (!loc.hasAccuracy() || loc.accuracy > MAX_ACCURACY_M) return
-        record(Fix(loc.latitude, loc.longitude, now()))
+        record(Fix(loc.latitude, loc.longitude, now(), if (loc.hasAltitude()) loc.altitude else null))
     }
 
     // Su API < 30 questi metodi non hanno implementazione di default.

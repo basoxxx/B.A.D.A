@@ -11,7 +11,7 @@ object TrackStore {
     fun list(ctx: Context): List<File> =
         dir(ctx).listFiles { f -> f.name.endsWith(".csv") }.orEmpty().sortedByDescending { it.name }
 
-    fun read(file: File): List<Event> = if (file.exists()) Track.parse(file.readLines()) else emptyList()
+    fun read(file: File): List<Event> = if (file.exists()) Track.parse(file.readText()) else emptyList()
 
     fun create(ctx: Context, run: Boolean, t: Long) = File(dir(ctx), "${t}_${if (run) "RUN" else "BIKE"}.csv")
 
