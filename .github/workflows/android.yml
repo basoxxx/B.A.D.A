@@ -1,0 +1,40 @@
+name: Android build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      KEYSTORE_B64: ${{ secrets.BADA_KEYSTORE_B64 }}
+      BADA_KEYSTORE_PASSWORD: ${{ secrets.BADA_KEYSTORE_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.14.3"
+
+      # Senza questi secret l'APK è firmato con una chiave debug casuale: ogni build nuova va installata disinstallando la vecchia (e i suoi dati).
+      - name: Chiave di firma
+        if: env.KEYSTORE_B64 != ''
+        run: |
+          echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/bada.p12"
+          echo "BADA_KEYSTORE=$RUNNER_TEMP/bada.p12" >> "$GITHUB_ENV"
+
+      - name: Test e build
+        run: gradle testDebugUnitTest assembleRelease
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: offtrack-apk
+          path: app/build/outputs/apk/release/*.apk
