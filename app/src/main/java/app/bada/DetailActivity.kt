@@ -3,6 +3,7 @@ package app.bada
 import android.app.Activity
 import android.app.AlertDialog
 import android.content.Intent
+import android.graphics.Paint
 import android.os.Bundle
 import android.view.View
 import android.widget.Button
@@ -132,6 +133,9 @@ class DetailActivity : Activity() {
             setPoints(pts)
             outlinePaint.color = getColor(R.color.accent)
             outlinePaint.strokeWidth = 5 * resources.displayMetrics.density
+            outlinePaint.strokeCap = Paint.Cap.ROUND // senza, i tanti segmenti corti sembrano tratteggiati
+            outlinePaint.strokeJoin = Paint.Join.ROUND
+            outlinePaint.isAntiAlias = true
         })
         val box = BoundingBox.fromGeoPoints(segs.flatten())
         map.addOnFirstLayoutListener { _, _, _, _, _ -> map.zoomToBoundingBox(box, false, 64) }
