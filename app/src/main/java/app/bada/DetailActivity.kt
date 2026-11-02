@@ -109,7 +109,7 @@ class DetailActivity : Activity() {
         val fastest = speeds.max().takeIf { it > 0 } ?: 1.0
         splits.forEachIndexed { i, s ->
             val row = layoutInflater.inflate(R.layout.item_split, box, false)
-            row.findViewById<TextView>(R.id.km).text = if (s.m >= 1000) "${i + 1}" else "%.2f".format(s.m / 1000)
+            row.findViewById<TextView>(R.id.km).text = if (s.m >= 1000) "${i + 1}" else String.format(Locale.ITALY, "%.2f", s.m / 1000)
             row.findViewById<TextView>(R.id.value).text = Format.average(run, s.m, s.ms)
             row.findViewById<View>(R.id.bar).layoutParams =
                 LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, (speeds[i] / fastest).toFloat())

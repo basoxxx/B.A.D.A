@@ -63,12 +63,26 @@ class MainActivity : Activity() {
         stat(R.id.week_time, "Tempo")
         stat(R.id.week_count, "Attività")
         Updater.check(this, force = false) { r, _ -> showUpdate(r) }
-        handleInstallStatus(intent)
+        handleIntent(intent)
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        handleIntent(intent)
+    }
+
+    /** Esito di un aggiornamento, oppure un GPX aperto o condiviso con Offtrack da un'altra app. */
+    private fun handleIntent(intent: Intent?) {
         handleInstallStatus(intent)
+        @Suppress("DEPRECATION")
+        val uris = when (intent?.action) {
+            Intent.ACTION_VIEW -> listOfNotNull(intent.data)
+            Intent.ACTION_SEND -> listOfNotNull(intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM))
+            Intent.ACTION_SEND_MULTIPLE -> intent.getParcelableArrayListExtra<Uri>(Intent.EXTRA_STREAM).orEmpty()
+            else -> return
+        }
+        if (uris.isNotEmpty()) importGpx(uris)
+        setIntent(Intent(this, MainActivity::class.java)) // una rotazione non ripete l'import
     }
 
     override fun onResume() {
@@ -163,6 +177,7 @@ class MainActivity : Activity() {
         if (resultCode != RESULT_OK || data == null) return
         val uris = data.clipData?.let { c -> (0 until c.itemCount).map { c.getItemAt(it).uri } } ?: listOfNotNull(data.data)
         if (uris.isEmpty()) return
+        if (requestCode == REQ_IMPORT_GPX) { importGpx(uris); return }
         thread {
             val msg = try {
                 when (requestCode) {
@@ -174,16 +189,6 @@ class MainActivity : Activity() {
                         val n = contentResolver.openInputStream(uris.first())!!.use { TrackStore.importZip(this, it) }
                         "Ripristinate $n attività"
                     }
-                    REQ_IMPORT_GPX -> {
-                        var added = 0
-                        var skipped = 0
-                        for (u in uris) {
-                            val text = contentResolver.openInputStream(u)!!.use { it.bufferedReader().readText() }
-                            val g = Gpx.read(text)
-                            if (g != null && TrackStore.save(this, g.events, g.run)) added++ else skipped++
-                        }
-                        "Importate $added attività" + if (skipped > 0) ", $skipped saltate (già presenti o senza orari)" else ""
-                    }
                     else -> null
                 }
             } catch (e: Exception) {
@@ -191,6 +196,22 @@ class MainActivity : Activity() {
             }
             runOnUiThread { msg?.let(::toast); refresh() }
         }
+    }
+
+    private fun importGpx(uris: List<Uri>) = thread {
+        var added = 0
+        var skipped = 0
+        for (u in uris) {
+            try {
+                val text = contentResolver.openInputStream(u)!!.use { it.bufferedReader().readText() }
+                val g = Gpx.read(text)
+                if (g != null && TrackStore.save(this, g.events, g.run)) added++ else skipped++
+            } catch (e: Exception) {
+                skipped++
+            }
+        }
+        val msg = "Importate $added attività" + if (skipped > 0) ", $skipped saltate (già presenti o non valide)" else ""
+        runOnUiThread { toast(msg); refresh() }
     }
 
     // --- Aggiornamenti ---

@@ -90,14 +90,14 @@ object Track {
     }
 
     /**
-     * Divide il percorso in tratti uguali (al più [bins], almeno 20 m l'uno) e per ognuno dà velocità
-     * e altitudine medie: la media sul tratto smussa il rumore del GPS. Vuoto sotto i 100 m.
+     * Divide il percorso in tratti uguali (al più [bins], almeno 50 m l'uno) e per ognuno dà velocità
+     * e altitudine medie, poi media mobile su 3 tratti per la velocità: il GPS a 1 Hz è rumoroso. Vuoto sotto i 100 m.
      */
     fun chart(events: List<Event>, bins: Int = 60): List<ChartPoint> {
         val p = profile(events)
         val total = p.lastOrNull()?.m ?: return emptyList()
         if (total < 100) return emptyList()
-        val n = minOf(bins, (total / 20).toInt())
+        val n = minOf(bins, (total / 50).toInt())
         // shortcut: ricerca lineare per ogni tratto (O(bins × punti)); con uscite di molte ore passare alla ricerca binaria.
         fun msAt(m: Double): Double {
             val j = p.indexOfFirst { it.m >= m }.let { if (it < 0) p.lastIndex else it }
@@ -106,11 +106,14 @@ object Track {
             val k = if (b.m > a.m) (m - a.m) / (b.m - a.m) else 1.0
             return a.ms + (b.ms - a.ms) * k
         }
-        return (0 until n).map { i ->
+        val raw = (0 until n).map { i ->
             val m0 = total * i / n; val m1 = total * (i + 1) / n
             val dtS = (msAt(m1) - msAt(m0)) / 1000
             val alts = p.filter { it.m in m0..m1 }.mapNotNull { it.alt }
             ChartPoint((m0 + m1) / 2, if (dtS > 0) (m1 - m0) / dtS else 0.0, alts.takeIf { it.isNotEmpty() }?.average())
+        }
+        return raw.mapIndexed { i, pt ->
+            pt.copy(mps = raw.subList(maxOf(0, i - 1), minOf(raw.size, i + 2)).map { it.mps }.average())
         }
     }
 
