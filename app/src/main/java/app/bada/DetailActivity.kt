@@ -39,6 +39,11 @@ class DetailActivity : Activity() {
         findViewById<TextView>(R.id.stats).text = (if (run) "Corsa" else "Bici") +
             "\n${Format.distance(m)}   ·   ${Format.duration(ms)}   ·   ${Format.average(run, m, ms)}"
 
+        findViewById<TextView>(R.id.splits).text = Track.splits(ev).mapIndexed { i, s ->
+            val km = if (s.m >= 1000) "${i + 1}" else Format.distance(s.m)
+            "%-10s %s".format(km, Format.average(run, s.m, s.ms))
+        }.joinToString("\n", prefix = "Km         ${if (run) "Passo" else "Velocità"}\n")
+
         map = findViewById(R.id.map)
         map.setTileSource(TileSourceFactory.MAPNIK)
         map.setMultiTouchControls(true)

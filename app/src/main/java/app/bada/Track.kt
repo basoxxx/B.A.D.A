@@ -2,6 +2,7 @@ package app.bada
 
 import kotlin.math.asin
 import kotlin.math.cos
+import kotlin.math.roundToLong
 import kotlin.math.sin
 import kotlin.math.sqrt
 
@@ -9,6 +10,8 @@ sealed interface Event { val t: Long }
 data class Fix(val lat: Double, val lon: Double, override val t: Long) : Event
 /** kind: start | pause | resume | stop */
 data class Mark(val kind: String, override val t: Long) : Event
+/** Un km (m = 1000) o l'ultimo tratto parziale. */
+data class Split(val m: Double, val ms: Long)
 
 object Track {
     private const val MIN_STEP_M = 3.0 // sotto questa soglia è rumore GPS da fermo
@@ -40,14 +43,31 @@ object Track {
         return out.filter { it.isNotEmpty() }
     }
 
-    fun distanceM(events: List<Event>): Double = segments(events).sumOf { seg ->
-        var anchor = seg.first()
-        var sum = 0.0
-        for (f in seg.drop(1)) {
-            val d = haversineM(anchor, f)
-            if (d >= MIN_STEP_M) { sum += d; anchor = f }
+    fun distanceM(events: List<Event>): Double = splits(events).sumOf { it.m }
+
+    /** Tempi km per km tra i fix, con interpolazione al confine del km; le pause non contano. */
+    fun splits(events: List<Event>): List<Split> {
+        val out = mutableListOf<Split>()
+        var kmM = 0.0
+        var kmMs = 0.0
+        for (seg in segments(events)) {
+            var anchor = seg.first()
+            for (f in seg.drop(1)) {
+                var d = haversineM(anchor, f)
+                if (d < MIN_STEP_M) continue
+                var dt = (f.t - anchor.t).toDouble()
+                anchor = f
+                while (kmM + d >= 1000) {
+                    val need = 1000 - kmM
+                    val needMs = dt * need / d
+                    out.add(Split(1000.0, (kmMs + needMs).roundToLong()))
+                    d -= need; dt -= needMs; kmM = 0.0; kmMs = 0.0
+                }
+                kmM += d; kmMs += dt
+            }
         }
-        sum
+        if (kmM > 0) out.add(Split(kmM, kmMs.roundToLong()))
+        return out
     }
 
     /** Tempo in movimento escluse le pause. now = null per un'uscita finita: senza "stop" si chiude all'ultimo evento. */

@@ -9,6 +9,7 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.view.View
+import android.view.ViewGroup
 import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.ListView
@@ -20,8 +21,10 @@ import java.util.Date
 import java.util.Locale
 
 class MainActivity : Activity() {
+    private class Item(val file: File, val title: String, val stats: String, val route: List<List<Fix>>)
+
     private var pendingRun = true
-    private var files: List<File> = emptyList()
+    private var items: List<Item> = emptyList()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -32,27 +35,43 @@ class MainActivity : Activity() {
             startActivity(Intent(this, RecordActivity::class.java))
         }
         findViewById<ListView>(R.id.list).setOnItemClickListener { _, _, pos, _ ->
-            startActivity(Intent(this, DetailActivity::class.java).putExtra(DetailActivity.EXTRA_FILE, files[pos].path))
+            startActivity(Intent(this, DetailActivity::class.java).putExtra(DetailActivity.EXTRA_FILE, items[pos].file.path))
         }
     }
 
     override fun onResume() {
         super.onResume()
         val recording = TrackingService.file
-        files = TrackStore.list(this).filter { it != recording }
-        findViewById<ListView>(R.id.list).adapter =
-            ArrayAdapter(this, android.R.layout.simple_list_item_1, files.map(::label))
-        findViewById<TextView>(R.id.empty).visibility = if (files.isEmpty()) View.VISIBLE else View.GONE
+        items = TrackStore.list(this).filter { it != recording }.map(::item)
+        findViewById<ListView>(R.id.list).adapter = object : ArrayAdapter<Item>(this, 0, items) {
+            override fun getView(pos: Int, convertView: View?, parent: ViewGroup): View {
+                val v = convertView ?: layoutInflater.inflate(R.layout.item_activity, parent, false)
+                val item = items[pos]
+                v.findViewById<TextView>(R.id.title).text = item.title
+                v.findViewById<TextView>(R.id.stats).text = item.stats
+                v.findViewById<RouteView>(R.id.route).setRoute(item.route)
+                return v
+            }
+        }
+        findViewById<TextView>(R.id.empty).visibility = if (items.isEmpty()) View.VISIBLE else View.GONE
         findViewById<View>(R.id.start_buttons).visibility = if (recording == null) View.VISIBLE else View.GONE
         findViewById<View>(R.id.back_to_recording).visibility = if (recording != null) View.VISIBLE else View.GONE
     }
 
-    private fun label(f: File): String {
+    private fun item(f: File): Item {
         val ev = TrackStore.read(f)
         val run = TrackStore.isRun(f)
         val m = Track.distanceM(ev)
         val ms = if (ev.isEmpty()) 0L else Track.activeMs(ev)
-        return "${kind(run)} · ${date(f)}\n${Format.distance(m)} · ${Format.duration(ms)} · ${Format.average(run, m, ms)}"
+        // Per la miniatura bastano ~100 punti a segmento: tiene bassa la memoria con molte uscite.
+        val route = Track.segments(ev).map { seg ->
+            val step = seg.size / 100 + 1
+            seg.filterIndexed { i, _ -> i % step == 0 || i == seg.lastIndex }
+        }
+        return Item(
+            f, "${kind(run)} · ${date(f)}",
+            "${Format.distance(m)}  ·  ${Format.duration(ms)}  ·  ${Format.average(run, m, ms)}", route,
+        )
     }
 
     private fun kind(run: Boolean) = if (run) "Corsa" else "Bici"
