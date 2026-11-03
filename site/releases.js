@@ -31,7 +31,7 @@
         art.appendChild(h);
         parts.slice(1).forEach(function (para) {
           // Solo le parti per chi usa l'app: niente righe tecniche del commit.
-          if (/^(Co-Authored-By|Claude-Session|Verifica):/m.test(para)) return;
+          if (/^(Co-Authored-By|Claude-Session|Verifica|Dettagli tecnici):/m.test(para)) return;
           var p = document.createElement("p");
           p.textContent = para.replace(/\n/g, " ");
           art.appendChild(p);
