@@ -9,11 +9,22 @@
 <meta property="og:type" content="website">
 <meta property="og:title" content="Offtrack, tracker di corsa e bici privato per Android">
 <meta property="og:description" content="Offtrack: app Android gratuita e open source per registrare corsa e bici con GPS, senza account, senza server, senza pubblicità.">
-<meta property="og:image" content="img/logo.svg">
+<meta property="og:url" content="https://basoxxx.github.io/B.A.D.A/">
+<meta property="og:image" content="https://basoxxx.github.io/B.A.D.A/img/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="it_IT">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://basoxxx.github.io/B.A.D.A/">
+<link rel="apple-touch-icon" href="img/icon-192.png">
 <link rel="icon" href="img/logo.svg" type="image/svg+xml">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
+<nav class="top"><div class="wrap">
+<a class="brand" href="#"><img src="img/logo.svg" width="28" height="28" alt="">Offtrack</a>
+<ul><li><a href="#funzioni">Funzioni</a></li><li><a href="#privacy">Privacy</a></li><li><a href="#installa">Installa</a></li><li><a href="#novita">Novità</a></li><li><a href="#faq">FAQ</a></li></ul>
+</div></nav>
 <header class="hero"><div class="wrap">
 <img src="img/logo.svg" width="96" height="96" alt="Logo di Offtrack">
 <p class="label">Offtrack</p>
@@ -23,7 +34,7 @@
 <a class="btn primary" href="https://github.com/basoxxx/B.A.D.A/releases/latest/download/offtrack.apk">Scarica l'APK</a>
 <a class="btn secondary" href="https://github.com/basoxxx/B.A.D.A">Codice sorgente</a>
 </div>
-<p class="note">Android 8.0 o successivo · Gratis · Open source</p>
+<p class="note" id="version">Android 8.0 o successivo · Gratis · Open source</p>
 </div></header>
 <main>
 <section aria-labelledby="t-shots"><div class="wrap">
@@ -33,15 +44,17 @@
 <li><figure><img src="img/record.png" width="260" height="578" alt="Schermata: In registrazione" loading="lazy"><figcaption>In registrazione</figcaption></figure></li>
 <li><figure><img src="img/detail.png" width="260" height="578" alt="Schermata: Dettaglio dell'attività" loading="lazy"><figcaption>Dettaglio dell'attività</figcaption></figure></li>
 </ul></div></section>
-<section aria-labelledby="t-feat"><div class="wrap">
+<section id="funzioni" aria-labelledby="t-feat"><div class="wrap">
 <p class="label">Funzioni</p><h2 id="t-feat">Tutto quello che serve</h2>
 <div class="grid">
-<div class="card"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg><h3>Registrazione a schermo spento</h3><p>Servizio GPS in primo piano: la corsa non si interrompe quando blocchi il telefono.</p></div>
+<div class="card"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg><h3>Registrazione a schermo spento</h3><p>Servizio GPS in primo piano: la corsa non si interrompe quando blocchi il telefono. Ogni punto è salvato subito.</p></div>
+<div class="card"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M10 9v6M14 9v6"/></svg><h3>Notifica dal vivo</h3><p>Tempo, distanza e media sempre visibili, con Pausa e Riprendi senza sbloccare il telefono.</p></div>
 <div class="card"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/></svg><h3>Mappa del percorso</h3><p>Il tracciato su mappa OpenStreetMap.</p></div>
 <div class="card"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 17a8 8 0 1 1 16 0"/><path d="m12 17 4-6"/></svg><h3>Passo, velocità e dislivello</h3><p>Passo o velocità, tempo, distanza e dislivello.</p></div>
 <div class="card"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h11M4 18h7"/></svg><h3>Tempi km per km</h3><p>Ogni chilometro con la sua barra, per vedere dove hai spinto.</p></div>
 <div class="card"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20h18"/><path d="m4 15 5-5 4 3 7-8"/></svg><h3>Grafici</h3><p>Andamento di passo e altitudine lungo il percorso.</p></div>
-<div class="card"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><h3>Riepilogo settimanale</h3><p>Quanto hai corso e pedalato questa settimana.</p></div>
+<div class="card"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><h3>Statistiche</h3><p>Totali della settimana, del mese, dell'anno e di sempre, separati per corsa e bici.</p></div>
+<div class="card"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/></svg><h3>Record personali</h3><p>Distanza più lunga, miglior passo o velocità media, km più veloce. Un tocco apre l'attività.</p></div>
 <div class="card"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0-4-4m4 4 4-4"/><path d="M4 17v3h16v-3"/></svg><h3>Esporta e importa GPX</h3><p>Anche le attività da Strava.</p></div>
 <div class="card"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h16v12H4zM3 4h18v4H3z"/><path d="M10 13h4"/></svg><h3>Backup completo</h3><p>Backup e ripristino di tutto in un file ZIP.</p></div>
 <div class="card"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-3-6.2"/><path d="M20 4v5h-5"/></svg><h3>Aggiornamenti dall'app</h3><p>Nuove versioni direttamente dall'app.</p></div>
@@ -67,14 +80,21 @@
 <li>Alla prima registrazione concedi posizione precisa e notifiche.</li>
 <li>Gli aggiornamenti successivi compaiono nell'app come scheda "Aggiornamento disponibile". La prima volta Android chiede di consentire a Offtrack di installare app.</li>
 </ol>
-<p class="tip"><strong>Consiglio:</strong> su Xiaomi, Huawei, Samsung e simili escludi Offtrack dall'ottimizzazione batteria, per non interrompere le registrazioni lunghe.</p>
+<p class="tip"><strong>Batteria:</strong> alla prima registrazione Offtrack chiede di essere esclusa dall'ottimizzazione batteria. Accetta: su Xiaomi, Huawei, Samsung e simili evita che le uscite lunghe si interrompano. Puoi farlo anche dopo, dal menu "Ottimizzazione batteria".</p>
 </div></section>
-<section aria-labelledby="t-faq"><div class="wrap">
+<section id="novita" aria-labelledby="t-news"><div class="wrap">
+<p class="label">Novità</p><h2 id="t-news">Ultime versioni</h2>
+<div id="releases" class="releases"><p class="muted">L'elenco completo delle versioni è su <a href="https://github.com/basoxxx/B.A.D.A/releases">GitHub Releases</a>.</p></div>
+</div></section>
+<section id="faq" aria-labelledby="t-faq"><div class="wrap">
 <p class="label">FAQ</p><h2 id="t-faq">Domande frequenti</h2>
 <details><summary>Perché non è sul Play Store?</summary><p>Offtrack è gratuita e non richiede un account sviluppatore: si scarica da GitHub e ogni versione è firmata con la stessa chiave.</p></details>
 <details><summary>Funziona su iPhone?</summary><p>No, solo Android: iOS non permette il GPS in background alle web app.</p></details>
 <details><summary>Posso portare le mie attività da Strava?</summary><p>Sì: esporta da Strava i file GPX e importali dal menu "Importa GPX", oppure apri il file e scegli Offtrack in "Apri con".</p></details>
 <details><summary>Cosa succede se cambio telefono?</summary><p>Usa "Esporta backup" sul vecchio telefono e poi "Importa backup" sul nuovo.</p></details>
+<details><summary>Android dice che l'app potrebbe essere pericolosa. È normale?</summary><p>Sì: Android lo dice per ogni app installata fuori dal Play Store. Offtrack non chiede account e non ha tracciamento, e il codice è pubblico. Se Play Protect chiede una scansione puoi accettare.</p></details>
+<details><summary>Come verifico che l'APK sia autentico?</summary><p>Ogni versione è firmata con la stessa chiave. L'impronta SHA-256 del certificato è <code class="fp">D5:6A:12:05:36:18:9F:80:C9:20:FE:44:7F:3C:06:B3:1F:7F:84:AC:9E:F8:2A:54:0B:3E:C6:D8:D0:9A:81:06</code>. Puoi controllarla con <code>apksigner verify --print-certs offtrack.apk</code>. Android stesso rifiuta un aggiornamento firmato con un'altra chiave.</p></details>
+<details><summary>La registrazione si è fermata da sola. Perché?</summary><p>Quasi sempre è il risparmio batteria del telefono. Dal menu scegli "Ottimizzazione batteria" e consenti a Offtrack di funzionare senza limitazioni. Su Xiaomi controlla anche "Avvio automatico" nelle impostazioni dell'app. I punti registrati fino a quel momento restano salvati.</p></details>
 <details><summary>Quanto è precisa l'altitudine?</summary><p>Viene dal GPS: la forma della salita è affidabile, il valore assoluto può scostarsi di qualche decina di metri.</p></details>
 </div></section>
 </main>
@@ -82,5 +102,6 @@
 <p>Offtrack è software libero. Mappe © OpenStreetMap contributors.</p>
 <p><a href="https://github.com/basoxxx/B.A.D.A">Codice sorgente su GitHub</a></p>
 </div></footer>
+<script src="releases.js" defer></script>
 </body>
 </html>
