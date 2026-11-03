@@ -22,7 +22,7 @@
         android:textSize="15sp"
         android:textStyle="bold" />
 
-    <!-- La barra occupa una frazione della larghezza: il parziale più veloce è pieno -->
+    <!-- La barra occupa una frazione della larghezza: il parziale più veloce è pieno e arancio -->
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="12dp"
@@ -36,4 +36,14 @@
             android:layout_height="match_parent"
             android:background="@drawable/bar" />
     </LinearLayout>
+
+    <!-- Differenza di quota nel km -->
+    <TextView
+        android:id="@+id/climb"
+        android:layout_width="56dp"
+        android:layout_height="wrap_content"
+        android:fontFamily="sans-serif-condensed"
+        android:gravity="end"
+        android:textColor="@color/muted"
+        android:textSize="14sp" />
 </LinearLayout>

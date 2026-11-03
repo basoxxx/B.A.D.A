@@ -2,6 +2,11 @@ package app.bada
 
 import android.Manifest
 import android.app.Activity
+import android.app.AlertDialog
+import android.text.InputType
+import android.widget.EditText
+import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.content.Intent
 import android.content.pm.PackageInstaller
 import android.content.pm.PackageManager
@@ -41,10 +46,16 @@ class MainActivity : Activity() {
         const val MENU_BATTERY = 7
         const val MENU_AUTOPAUSE = 8
         const val MENU_VOICE = 9
+        const val MENU_GOALS = 10
+        /** Scorciatoie dell'icona (pressione lunga): avviano subito la registrazione. */
+        const val ACTION_START_RUN = "app.bada.START_RUN"
+        const val ACTION_START_BIKE = "app.bada.START_BIKE"
     }
 
     private var pendingRun = true
     private var items: List<Workout> = emptyList()
+    /** Righe della lista: intestazioni di mese e uscite. */
+    private var rows: List<Any> = emptyList()
     /** Filtro della lista: null = tutte, true = corsa, false = bici. Ricordato tra un avvio e l'altro. */
     private var filter: Boolean? = null
 
@@ -57,7 +68,8 @@ class MainActivity : Activity() {
             startActivity(Intent(this, RecordActivity::class.java))
         }
         findViewById<ListView>(R.id.list).setOnItemClickListener { _, _, pos, _ ->
-            startActivity(Intent(this, DetailActivity::class.java).putExtra(DetailActivity.EXTRA_FILE, items[pos].file))
+            val w = rows.getOrNull(pos) as? Workout ?: return@setOnItemClickListener
+            startActivity(Intent(this, DetailActivity::class.java).putExtra(DetailActivity.EXTRA_FILE, w.file))
         }
         findViewById<View>(R.id.menu).setOnClickListener(::showMenu)
         findViewById<View>(R.id.week_card).setOnClickListener { openStats() }
@@ -80,6 +92,14 @@ class MainActivity : Activity() {
     /** Esito di un aggiornamento, oppure un GPX aperto o condiviso con Offtrack da un'altra app. */
     private fun handleIntent(intent: Intent?) {
         handleInstallStatus(intent)
+        when (intent?.action) {
+            ACTION_START_RUN, ACTION_START_BIKE -> {
+                val run = intent.action == ACTION_START_RUN
+                setIntent(Intent(this, MainActivity::class.java))
+                if (TrackingService.file == null) start(run) else startActivity(Intent(this, RecordActivity::class.java))
+                return
+            }
+        }
         @Suppress("DEPRECATION")
         val uris = when (intent?.action) {
             Intent.ACTION_VIEW -> listOfNotNull(intent.data)
@@ -109,20 +129,39 @@ class MainActivity : Activity() {
         val f = filter
         thread {
             val all = Workouts.all(this)
-            runOnUiThread { if (!isFinishing && f == filter) show(all.filter { f == null || it.run == f }) }
+            val records = Stats.recordCounts(all)
+            runOnUiThread { if (!isFinishing && f == filter) show(all.filter { f == null || it.run == f }, all, records) }
         }
     }
 
-    private fun show(list: List<Workout>) {
+    private fun show(list: List<Workout>, all: List<Workout>, records: Map<String, Int>) {
         val recording = TrackingService.file
         items = list
+        rows = withMonths(list)
         StatsActivity.selectable(findViewById(R.id.filter_all), filter == null)
         StatsActivity.selectable(findViewById(R.id.filter_run), filter == true)
         StatsActivity.selectable(findViewById(R.id.filter_bike), filter == false)
-        findViewById<ListView>(R.id.list).adapter = object : ArrayAdapter<Workout>(this, 0, items) {
+        findViewById<ListView>(R.id.list).adapter = object : ArrayAdapter<Any>(this, 0, rows) {
+            override fun getViewTypeCount() = 2
+            override fun getItemViewType(pos: Int) = if (rows[pos] is Month) 0 else 1
+            override fun isEnabled(pos: Int) = rows[pos] is Workout
+
             override fun getView(pos: Int, convertView: View?, parent: ViewGroup): View {
+                val row = rows[pos]
+                if (row is Month) {
+                    val h = convertView ?: layoutInflater.inflate(R.layout.item_month, parent, false)
+                    h.findViewById<TextView>(R.id.month).text = row.label
+                    h.findViewById<TextView>(R.id.totals).text =
+                        "${if (row.count == 1) "1 attività" else "${row.count} attività"}  ·  ${Format.distance(row.m)}"
+                    return h
+                }
                 val v = convertView ?: layoutInflater.inflate(R.layout.item_activity, parent, false)
-                val it = items[pos]
+                val it = row as Workout
+                val n = records[it.file] ?: 0
+                v.findViewById<TextView>(R.id.badge).apply {
+                    visibility = if (n > 0) View.VISIBLE else View.GONE
+                    text = if (n == 1) "RECORD" else "$n RECORD"
+                }
                 v.findViewById<TextView>(R.id.title).text = "${kind(it.run)}  ·  ${date(it.start)}"
                 v.findViewById<TextView>(R.id.name).text = it.title
                 v.findViewById<TextView>(R.id.distance).text = Format.distance(it.m)
@@ -146,6 +185,74 @@ class MainActivity : Activity() {
         stat(R.id.week_distance, null, Format.distance(week.sumOf { it.m }))
         stat(R.id.week_time, null, Format.duration(week.sumOf { it.ms }))
         stat(R.id.week_count, null, week.size.toString())
+        showGoals(all.filter { it.start >= monday })
+    }
+
+    /** Raggruppa per mese, dal più recente: ogni gruppo ha un'intestazione con numero di uscite e km. */
+    private fun withMonths(list: List<Workout>): List<Any> {
+        val fmt = SimpleDateFormat("LLLL yyyy", Locale.ITALY)
+        val out = mutableListOf<Any>()
+        for ((label, group) in list.groupBy { fmt.format(Date(it.start)).replaceFirstChar(Char::uppercaseChar) }) {
+            out.add(Month(label, group.size, group.sumOf { it.m }))
+            out.addAll(group)
+        }
+        return out
+    }
+
+    private class Month(val label: String, val count: Int, val m: Double)
+
+    /** Barre di avanzamento verso gli obiettivi della settimana; se non ce ne sono, l'invito a impostarli. */
+    private fun showGoals(week: List<Workout>) {
+        val box = findViewById<LinearLayout>(R.id.goals)
+        box.removeAllViews()
+        val types = listOf(true, false).filter { filter == null || filter == it }
+        val withGoal = types.filter { Prefs.goalKm(this, it) > 0 }
+        if (withGoal.isEmpty()) {
+            box.addView(TextView(this).apply {
+                text = "Imposta un obiettivo settimanale  ›"
+                setTextColor(getColor(R.color.muted))
+                textSize = 13f
+                setPadding(0, (12 * resources.displayMetrics.density).toInt(), 0, 0)
+                setOnClickListener { editGoals() }
+            })
+            return
+        }
+        for (run in withGoal) {
+            val goal = Prefs.goalKm(this, run)
+            val km = week.filter { it.run == run }.sumOf { it.m } / 1000
+            val v = layoutInflater.inflate(R.layout.item_goal, box, false)
+            v.findViewById<TextView>(R.id.goal_label).text =
+                if (km >= goal) "Obiettivo ${kind(run).lowercase()} raggiunto" else "Obiettivo ${kind(run).lowercase()}: mancano ${String.format(Locale.ITALY, "%.1f", goal - km)} km"
+            v.findViewById<TextView>(R.id.goal_value).text = String.format(Locale.ITALY, "%.1f / %d km", km, goal)
+            v.findViewById<ProgressBar>(R.id.goal_bar).progress = (km / goal * 1000).toInt().coerceIn(0, 1000)
+            v.setOnClickListener { editGoals() }
+            box.addView(v)
+        }
+    }
+
+    private fun editGoals() {
+        val dp = resources.displayMetrics.density
+        val box = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding((20 * dp).toInt(), (8 * dp).toInt(), (20 * dp).toInt(), 0)
+        }
+        fun field(run: Boolean) = EditText(this).apply {
+            hint = "${kind(run)}: km a settimana (vuoto = nessuno)"
+            inputType = InputType.TYPE_CLASS_NUMBER
+            Prefs.goalKm(this@MainActivity, run).takeIf { it > 0 }?.let { setText(it.toString()) }
+        }
+        val run = field(true); val bike = field(false)
+        box.addView(run); box.addView(bike)
+        AlertDialog.Builder(this)
+            .setTitle("Obiettivi settimanali")
+            .setView(box)
+            .setPositiveButton("Salva") { _, _ ->
+                Prefs.setGoalKm(this, true, run.text.toString().toIntOrNull() ?: 0)
+                Prefs.setGoalKm(this, false, bike.text.toString().toIntOrNull() ?: 0)
+                refresh()
+            }
+            .setNegativeButton("Annulla", null)
+            .show()
     }
 
     private fun stat(id: Int, label: String?, value: String? = null) {
@@ -162,6 +269,7 @@ class MainActivity : Activity() {
     private fun showMenu(anchor: View) {
         val menu = PopupMenu(this, anchor)
         menu.menu.add(0, MENU_STATS, 0, "Statistiche e record")
+        menu.menu.add(0, MENU_GOALS, 0, "Obiettivi settimanali")
         menu.menu.add(0, MENU_EXPORT, 1, "Esporta backup")
         menu.menu.add(0, MENU_IMPORT, 2, "Importa backup")
         menu.menu.add(0, MENU_GPX, 3, "Importa GPX")
@@ -180,6 +288,7 @@ class MainActivity : Activity() {
                 MENU_IMPORT -> startActivityForResult(openDocument(multiple = false), REQ_IMPORT_BACKUP)
                 MENU_GPX -> startActivityForResult(openDocument(multiple = true), REQ_IMPORT_GPX)
                 MENU_STATS -> openStats()
+                MENU_GOALS -> editGoals()
                 MENU_AUTOPAUSE -> Prefs.setAutoPause(this, !Prefs.autoPause(this)).also {
                     toast(if (Prefs.autoPause(this)) "Pausa automatica attiva: si ferma quando ti fermi" else "Pausa automatica disattivata")
                 }

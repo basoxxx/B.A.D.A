@@ -1,8 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- Tutta la pagina scorre; la mappa ha un'altezza fissa e gestisce da sé i gesti -->
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/scroll"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fitsSystemWindows="true"
+    android:fitsSystemWindows="true">
+
+<LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
     android:orientation="vertical">
 
     <LinearLayout
@@ -48,6 +54,22 @@
             android:textColor="@color/muted"
             android:textSize="14sp" />
 
+        <!-- Nuovo record appena registrato -->
+        <TextView
+            android:id="@+id/record_banner"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:background="@drawable/banner_gold"
+            android:fontFamily="sans-serif-medium"
+            android:paddingStart="14dp"
+            android:paddingTop="10dp"
+            android:paddingEnd="14dp"
+            android:paddingBottom="10dp"
+            android:textColor="@color/gold"
+            android:textSize="15sp"
+            android:visibility="gone" />
+
         <TextView
             android:id="@+id/note"
             android:layout_width="match_parent"
@@ -80,27 +102,63 @@
         </LinearLayout>
     </LinearLayout>
 
-    <org.osmdroid.views.MapView
-        android:id="@+id/map"
+    <FrameLayout
+        android:id="@+id/map_box"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1" />
+        android:layout_height="340dp">
+
+        <org.osmdroid.views.MapView
+            android:id="@+id/map"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+        <!-- Legenda dei colori della linea -->
+        <LinearLayout
+            android:id="@+id/legend"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="top|end"
+            android:layout_margin="10dp"
+            android:background="@drawable/legend_bg"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="10dp"
+            android:paddingTop="6dp"
+            android:paddingEnd="10dp"
+            android:paddingBottom="6dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Lento"
+                android:textColor="@color/text"
+                android:textSize="12sp" />
+
+            <View
+                android:id="@+id/legend_bar"
+                android:layout_width="56dp"
+                android:layout_height="6dp"
+                android:layout_marginStart="8dp"
+                android:layout_marginEnd="8dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Veloce"
+                android:textColor="@color/text"
+                android:textSize="12sp" />
+        </LinearLayout>
+    </FrameLayout>
 
     <TextView
         android:id="@+id/no_points"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
+        android:layout_height="160dp"
         android:background="@color/surface"
         android:gravity="center"
         android:text="Nessun punto GPS registrato"
         android:textColor="@color/muted"
         android:visibility="gone" />
-
-    <ScrollView
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -175,5 +233,5 @@
                     android:text="Esporta GPX" />
             </LinearLayout>
         </LinearLayout>
-    </ScrollView>
 </LinearLayout>
+</ScrollView>

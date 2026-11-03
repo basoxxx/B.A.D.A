@@ -46,12 +46,14 @@ object ShareCard {
 
         // Percorso nella parte alta
         val route = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = 0xFFFF5722.toInt(); style = Paint.Style.STROKE; strokeWidth = 12f
+            color = 0xFFFF5722.toInt(); style = Paint.Style.STROKE; strokeWidth = 14f
             strokeCap = Paint.Cap.ROUND; strokeJoin = Paint.Join.ROUND
         }
         c.save()
         c.translate(pad, 160f)
-        RouteView.draw(c, Track.segments(events), W - 2 * pad, 700f, route)
+        // Bordo scuro sotto e linea colorata per velocità sopra, come sulla mappa.
+        RouteView.draw(c, Track.segments(events), W - 2 * pad, 700f, Paint(route).apply { color = 0xFF0A1020.toInt(); strokeWidth = 20f }, 40f)
+        RouteView.drawColored(c, Track.pieces(events, pieces = 80), W - 2 * pad, 700f, route, 40f)
         c.restore()
 
         var y = 960f

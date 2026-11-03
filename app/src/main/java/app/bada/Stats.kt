@@ -96,6 +96,23 @@ object Stats {
         acts.mapNotNull { a -> a.best[distance]?.takeIf { it > 0 }?.let { Record(a, it.toDouble()) } }
             .sortedBy { it.value }.take(3)
 
+    /** Quante distanze ha come record personale ogni uscita (per il distintivo nella lista). */
+    fun recordCounts(acts: List<Workout>): Map<String, Int> {
+        val out = HashMap<String, Int>()
+        for (run in listOf(true, false)) {
+            val same = acts.filter { it.run == run }
+            for ((d, _) in efforts(run)) {
+                val best = same.filter { (it.best[d] ?: 0) > 0 }.minByOrNull { it.best.getValue(d) } ?: continue
+                out[best.file] = (out[best.file] ?: 0) + 1
+            }
+        }
+        return out
+    }
+
+    /** Distanze su cui [w] è record personale, con il nome da mostrare. */
+    fun recordsOf(acts: List<Workout>, w: Workout): List<String> =
+        efforts(w.run).filter { (d, _) -> medal(acts.filter { it.run == w.run }, w, d) == 1 }.map { it.second }
+
     /** Posizione (1-3) del tempo di [w] su [distance] tra tutte le uscite, null se fuori dal podio. */
     fun medal(acts: List<Workout>, w: Workout, distance: Int): Int? =
         podium(acts, distance).indexOfFirst { it.workout.file == w.file }.takeIf { it >= 0 }?.plus(1)

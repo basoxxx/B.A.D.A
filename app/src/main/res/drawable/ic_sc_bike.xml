@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Scorciatoia Bici: cerchio blu notte con due ruote -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp" android:height="48dp" android:viewportWidth="48" android:viewportHeight="48">
+    <path android:fillColor="#14213D" android:pathData="M24,2a22,22 0,1 1,0 44a22,22 0,1 1,0 -44z" />
+    <path android:strokeColor="#FF5722" android:strokeWidth="2.5" android:fillColor="#00000000"
+        android:pathData="M16,23a6,6 0,1 1,0 12a6,6 0,1 1,0 -12zM32,23a6,6 0,1 1,0 12a6,6 0,1 1,0 -12zM16,29L22,19L28,29L32,29M22,19L30,19M28,16L31,16L32,29" />
+</vector>

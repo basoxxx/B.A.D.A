@@ -110,6 +110,13 @@
             <include android:id="@+id/week_time" layout="@layout/stat" />
             <include android:id="@+id/week_count" layout="@layout/stat" />
         </LinearLayout>
+
+        <!-- Obiettivi settimanali: una barra per tipo, o l'invito a impostarne uno -->
+        <LinearLayout
+            android:id="@+id/goals"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
     </LinearLayout>
 
     <LinearLayout

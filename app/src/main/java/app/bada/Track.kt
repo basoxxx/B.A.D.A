@@ -10,8 +10,10 @@ sealed interface Event { val t: Long }
 data class Fix(val lat: Double, val lon: Double, override val t: Long, val alt: Double? = null) : Event
 /** kind: start | pause | resume | stop */
 data class Mark(val kind: String, override val t: Long) : Event
-/** Un km (m = 1000) o l'ultimo tratto parziale. */
-data class Split(val m: Double, val ms: Long)
+/** Un km (m = 1000) o l'ultimo tratto parziale; climb = differenza di quota tra fine e inizio, se nota. */
+data class Split(val m: Double, val ms: Long, val climb: Double? = null)
+/** Un pezzo di percorso con la sua velocità, per colorare la linea sulla mappa. */
+data class Piece(val points: List<Fix>, val mps: Double)
 /** Distanza e tempo attivo cumulati a ogni fix contato. */
 data class Sample(val m: Double, val ms: Long, val alt: Double?)
 /** Un punto dei grafici: velocità media e altitudine media di un tratto. */
@@ -70,22 +72,86 @@ object Track {
 
     /** Tempi km per km con interpolazione al confine del km; le pause non contano. */
     fun splits(events: List<Event>): List<Split> {
+        val p = profile(events)
+        val alt = smoothAlt(p)
+        // Quota a una distanza qualsiasi, interpolata sulle quote smussate.
+        fun altAt(m: Double): Double? {
+            if (alt.isEmpty()) return null
+            val j = p.indexOfFirst { it.m >= m }.let { if (it < 0) p.lastIndex else it }
+            if (j == 0) return alt[0]
+            val a = p[j - 1]; val b = p[j]
+            val k = if (b.m > a.m) (m - a.m) / (b.m - a.m) else 1.0
+            return alt[j - 1] + (alt[j] - alt[j - 1]) * k
+        }
         val out = mutableListOf<Split>()
         var kmM = 0.0
         var kmMs = 0.0
-        for ((a, b) in profile(events).zipWithNext()) {
+        var startM = 0.0
+        for ((a, b) in p.zipWithNext()) {
             var d = b.m - a.m
             var dt = (b.ms - a.ms).toDouble()
             if (d <= 0) continue
             while (kmM + d >= 1000) {
                 val need = 1000 - kmM
                 val needMs = dt * need / d
-                out.add(Split(1000.0, (kmMs + needMs).roundToLong()))
+                val endM = startM + 1000
+                out.add(Split(1000.0, (kmMs + needMs).roundToLong(), climbBetween(altAt(startM), altAt(endM))))
+                startM = endM
                 d -= need; dt -= needMs; kmM = 0.0; kmMs = 0.0
             }
             kmM += d; kmMs += dt
         }
-        if (kmM > 0) out.add(Split(kmM, kmMs.roundToLong()))
+        if (kmM > 0) out.add(Split(kmM, kmMs.roundToLong(), climbBetween(altAt(startM), altAt(startM + kmM))))
+        return out
+    }
+
+    private fun climbBetween(a: Double?, b: Double?) = if (a != null && b != null) b - a else null
+
+    /**
+     * Quote smussate (media sui punti entro 100 m): quelle grezze del GPS ballano di qualche metro.
+     * Agli estremi la finestra si stringe restando simmetrica, così inizio e fine non vengono falsati.
+     * Vuota se mancano le quote.
+     */
+    private fun smoothAlt(p: List<Sample>): List<Double> {
+        if (p.isEmpty() || p.any { it.alt == null }) return emptyList()
+        val first = p.first().m; val last = p.last().m
+        return p.indices.map { i ->
+            val r = minOf(100.0, p[i].m - first, last - p[i].m)
+            var sum = p[i].alt!!; var n = 1
+            var j = i - 1
+            while (j >= 0 && p[j].m >= p[i].m - r) { sum += p[j].alt!!; n++; j-- }
+            j = i + 1
+            while (j < p.size && p[j].m <= p[i].m + r) { sum += p[j].alt!!; n++; j++ }
+            sum / n
+        }
+    }
+
+    /**
+     * Divide il percorso in circa [pieces] pezzi con la loro velocità media, per la linea colorata.
+     * Pezzi consecutivi condividono un punto, così la linea resta continua; le pause la spezzano.
+     */
+    fun pieces(events: List<Event>, pieces: Int = 160): List<Piece> {
+        val segs = segments(events).filter { it.size >= 2 }
+        val total = segs.sumOf { it.size }
+        if (total < 2) return emptyList()
+        val size = maxOf(2, total / pieces)
+        val out = mutableListOf<Piece>()
+        for (seg in segs) {
+            val raw = mutableListOf<Piece>()
+            var i = 0
+            while (i < seg.lastIndex) {
+                val chunk = seg.subList(i, minOf(seg.size, i + size + 1))
+                val m = chunk.zipWithNext().sumOf { (a, b) -> haversineM(a, b) }
+                val s = (chunk.last().t - chunk.first().t) / 1000.0
+                raw.add(Piece(chunk, if (s > 0) m / s else 0.0))
+                i += size
+            }
+            // Media mobile su 5 pezzi dello stesso tratto: senza, il rumore GPS fa una linea a macchie.
+            raw.forEachIndexed { k, piece ->
+                val near = raw.subList(maxOf(0, k - 2), minOf(raw.size, k + 3))
+                out.add(piece.copy(mps = near.sumOf { it.mps } / near.size))
+            }
+        }
         return out
     }
 

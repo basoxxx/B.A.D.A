@@ -37,7 +37,7 @@ class RecordActivity : Activity() {
         val hasFix = TrackingService.events.any { it is Fix }
         TrackingService.stop(this)
         if (f != null && hasFix) {
-            startActivity(Intent(this, DetailActivity::class.java).putExtra(DetailActivity.EXTRA_FILE, f.path))
+            startActivity(Intent(this, DetailActivity::class.java).putExtra(DetailActivity.EXTRA_FILE, f.path).putExtra(DetailActivity.EXTRA_FRESH, true))
         }
         finish()
     }

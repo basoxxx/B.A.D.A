@@ -1,4 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Offtrack</string>
+    <string name="sc_run">Corsa</string>
+    <string name="sc_run_long">Inizia una corsa</string>
+    <string name="sc_bike">Bici</string>
+    <string name="sc_bike_long">Inizia un giro in bici</string>
 </resources>

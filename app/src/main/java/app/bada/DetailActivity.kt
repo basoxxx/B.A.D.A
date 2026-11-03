@@ -4,6 +4,7 @@ import android.app.Activity
 import android.app.AlertDialog
 import android.content.Intent
 import android.graphics.Paint
+import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.text.InputType
 import android.view.View
@@ -32,6 +33,8 @@ import kotlin.concurrent.thread
 class DetailActivity : Activity() {
     companion object {
         const val EXTRA_FILE = "file"
+        /** Appena registrata: se ha fatto un record lo si festeggia. */
+        const val EXTRA_FRESH = "fresh"
         private const val REQ_EXPORT_GPX = 1
         /** Oro, argento, bronzo. */
         val MEDALS = intArrayOf(R.color.gold, R.color.silver, R.color.bronze)
@@ -56,19 +59,37 @@ class DetailActivity : Activity() {
         events = TrackStore.read(file)
         run = TrackStore.isRun(file)
         showHeader()
-        val m = Track.distanceM(events)
-        val ms = if (events.isEmpty()) 0L else Track.activeMs(events)
-        val chart = Track.chart(events)
+        map = findViewById(R.id.map)
+        map.setTileSource(TileSourceFactory.MAPNIK)
+        map.setMultiTouchControls(true)
+        map.overlays.add(CopyrightOverlay(this)) // attribuzione richiesta dalla licenza OSM
+        // Dentro una pagina che scorre: mentre tocchi la mappa i gesti sono suoi, non della pagina.
+        map.setOnTouchListener { v, e ->
+            v.parent.requestDisallowInterceptTouchEvent(e.actionMasked != android.view.MotionEvent.ACTION_UP &&
+                e.actionMasked != android.view.MotionEvent.ACTION_CANCEL)
+            false
+        }
 
-        stat(R.id.stat_distance, "Distanza", Format.distance(m))
-        stat(R.id.stat_time, "Tempo in movimento", Format.duration(ms))
-        stat(R.id.stat_average, if (run) "Passo medio" else "Velocità media", Format.average(run, m, ms))
-        val alts = chart.mapNotNull { it.alt }
-        stat(R.id.stat_climb, "Dislivello", if (alts.size < 2) "--" else "%.0f m".format(Track.climbM(chart)))
-
-        showCharts(chart, alts)
-        showSplits()
-        showMap()
+        // I calcoli (grafici, parziali, colori) vanno in background: con un giro di ore sono decine di migliaia di punti.
+        val ev = events
+        thread {
+            val m = Track.distanceM(ev)
+            val ms = if (ev.isEmpty()) 0L else Track.activeMs(ev)
+            val chart = Track.chart(ev)
+            val splits = Track.splits(ev)
+            val pieces = Track.pieces(ev, pieces = 80)
+            runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                stat(R.id.stat_distance, "Distanza", Format.distance(m))
+                stat(R.id.stat_time, "Tempo in movimento", Format.duration(ms))
+                stat(R.id.stat_average, if (run) "Passo medio" else "Velocità media", Format.average(run, m, ms))
+                val alts = chart.mapNotNull { it.alt }
+                stat(R.id.stat_climb, "Dislivello", if (alts.size < 2) "--" else "%.0f m".format(Track.climbM(chart)))
+                showCharts(chart, alts)
+                showSplits(splits)
+                showMap(pieces)
+            }
+        }
         showEfforts()
 
         findViewById<View>(R.id.title).setOnClickListener { edit() }
@@ -187,6 +208,14 @@ class DetailActivity : Activity() {
             val me = all.firstOrNull { it.file == file.path } ?: return@thread
             runOnUiThread {
                 if (isFinishing) return@runOnUiThread
+                val records = Stats.recordsOf(all, me)
+                if (intent.getBooleanExtra(EXTRA_FRESH, false) && records.isNotEmpty()) {
+                    findViewById<TextView>(R.id.record_banner).apply {
+                        text = (if (records.size == 1) "Nuovo record personale: " else "Nuovi record personali: ") +
+                            records.joinToString(", ")
+                        visibility = View.VISIBLE
+                    }
+                }
                 val box = findViewById<LinearLayout>(R.id.efforts)
                 box.removeAllViews()
                 val rows = Stats.efforts(run).filter { me.best.containsKey(it.first) }
@@ -223,47 +252,68 @@ class DetailActivity : Activity() {
         }
         val altChart = findViewById<ChartView>(R.id.alt_chart)
         if (alts.size < 2) altChart.visibility = View.GONE // attività registrate prima dell'altitudine
-        else altChart.set("Altitudine", alts) { "%.0f m".format(it) }
+        else altChart.set("Altitudine", alts, minRange = 40.0) { "%.0f m".format(it) }
     }
 
-    private fun showSplits() {
-        val splits = Track.splits(events)
+    private fun showSplits(splits: List<Split>) {
         val box = findViewById<LinearLayout>(R.id.splits)
         if (splits.isEmpty()) { findViewById<View>(R.id.splits_title).visibility = View.GONE; return }
         // Barra proporzionale alla velocità: il parziale più veloce è pieno.
         val speeds = splits.map { if (it.ms > 0) it.m / it.ms else 0.0 }
-        val fastest = speeds.max().takeIf { it > 0 } ?: 1.0
+        // Barra tra il km più lento (35%) e il più veloce (100%): le differenze di pochi secondi si vedono.
+        val full = splits.indices.filter { splits[it].m >= 1000 }.map { speeds[it] }
+        val slowest = full.minOrNull() ?: 0.0
+        val fastestSpeed = full.maxOrNull() ?: speeds.max()
+        fun width(v: Double) = if (fastestSpeed - slowest < 1e-9) 1.0 else (0.35 + 0.65 * (v - slowest) / (fastestSpeed - slowest)).coerceIn(0.1, 1.0)
+        // Il km intero più veloce è in arancio, gli altri in grigio-blu: si vede subito dove hai spinto.
+        val best = splits.indices.filter { splits[it].m >= 1000 }.maxByOrNull { speeds[it] }
         splits.forEachIndexed { i, s ->
             val row = layoutInflater.inflate(R.layout.item_split, box, false)
             row.findViewById<TextView>(R.id.km).text = if (s.m >= 1000) "${i + 1}" else String.format(Locale.ITALY, "%.2f", s.m / 1000)
-            row.findViewById<TextView>(R.id.value).text = Format.average(run, s.m, s.ms)
-            row.findViewById<View>(R.id.bar).layoutParams =
-                LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, (speeds[i] / fastest).toFloat())
+            row.findViewById<TextView>(R.id.value).apply {
+                text = Format.average(run, s.m, s.ms)
+                if (i == best) setTextColor(getColor(R.color.accent))
+            }
+            row.findViewById<View>(R.id.bar).apply {
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, width(speeds[i]).toFloat())
+                setBackgroundResource(if (i == best) R.drawable.bar else R.drawable.bar_muted)
+            }
+            row.findViewById<TextView>(R.id.climb).text = s.climb?.let {
+                val r = Math.round(it)
+                if (r > 0) "+$r m" else if (r < 0) "−${-r} m" else "0 m"
+            } ?: ""
             box.addView(row)
         }
     }
 
-    private fun showMap() {
-        map = findViewById(R.id.map)
-        map.setTileSource(TileSourceFactory.MAPNIK)
-        map.setMultiTouchControls(true)
-        map.overlays.add(CopyrightOverlay(this)) // attribuzione richiesta dalla licenza OSM
-        val segs = Track.segments(events).map { seg -> seg.map { GeoPoint(it.lat, it.lon) } }
+    private fun showMap(pieces: List<Piece>) {        val segs = Track.segments(events).filter { it.size >= 2 }.map { seg -> seg.map { GeoPoint(it.lat, it.lon) } }
         if (segs.isEmpty()) {
-            map.visibility = View.GONE
+            findViewById<View>(R.id.map_box).visibility = View.GONE
             findViewById<TextView>(R.id.no_points).visibility = View.VISIBLE
             return
         }
-        for (pts in segs) map.overlays.add(Polyline(map).apply {
+        // Linea colorata per velocità, sopra un bordo scuro che la stacca dalla mappa.
+        val dp = resources.displayMetrics.density
+        fun line(pts: List<GeoPoint>, color: Int, width: Float) = Polyline(map).apply {
             setPoints(pts)
-            outlinePaint.color = getColor(R.color.accent)
-            outlinePaint.strokeWidth = 5 * resources.displayMetrics.density
+            outlinePaint.color = color
+            outlinePaint.strokeWidth = width
             outlinePaint.strokeCap = Paint.Cap.ROUND // senza, i tanti segmenti corti sembrano tratteggiati
             outlinePaint.strokeJoin = Paint.Join.ROUND
             outlinePaint.isAntiAlias = true
-        })
+        }
+        for (pts in segs) map.overlays.add(line(pts, 0xCC0E1626.toInt(), 8 * dp))
+        val tone = PaceColors.normalize(pieces.map { it.mps })
+        pieces.forEachIndexed { i, piece ->
+            map.overlays.add(line(piece.points.map { GeoPoint(it.lat, it.lon) }, PaceColors.color(tone[i]), 5 * dp))
+        }
+        findViewById<View>(R.id.legend_bar).background =
+            GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT, PaceColors.gradient).apply { cornerRadius = 3 * dp }
         val box = BoundingBox.fromGeoPoints(segs.flatten())
-        map.addOnFirstLayoutListener { _, _, _, _, _ -> map.zoomToBoundingBox(box, false, 64) }
+        // La mappa può essere già disposta quando arrivano i dati (calcolati in background).
+        if (map.width > 0 && map.height > 0) map.zoomToBoundingBox(box, false, (44 * dp).toInt())
+        else map.addOnFirstLayoutListener { _, _, _, _, _ -> map.zoomToBoundingBox(box, false, (44 * dp).toInt()) }
+        map.invalidate()
     }
 
     @Deprecated("API di piattaforma; senza AndroidX non c'è l'alternativa")

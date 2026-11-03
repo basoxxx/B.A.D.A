@@ -44,14 +44,17 @@
 <div><dt>Prezzo</dt><dd>gratis</dd></div>
 </dl>
 </div>
-<figure class="phone"><img src="img/home.png" width="270" height="585" alt="Home di Offtrack: riepilogo della settimana, avvio corsa e bici, lista delle uscite"></figure>
+<div class="hero-shots">
+<figure class="device back"><img src="img/detail.jpg" width="540" height="1170" alt="Corsa appena finita al Parco Sempione: banner del nuovo record personale e percorso colorato per velocità"></figure>
+<figure class="device front"><img src="img/home.png" width="540" height="1170" alt="Home di Offtrack: obiettivo della settimana e uscite raggruppate per mese"></figure>
+</div>
 </div></section>
 
 <section id="app"><div class="wrap">
 <h2>Cosa trovi nell'app</h2>
 
 <article class="screen">
-<figure class="phone"><img src="img/record.png" width="270" height="585" alt="Registrazione in corso con la forma del percorso, tempo, distanza, passo medio e passo attuale" loading="lazy"></figure>
+<figure class="device"><img src="img/record.png" width="270" height="585" alt="Registrazione in corso con la forma del percorso, tempo, distanza, passo medio e passo attuale" loading="lazy"></figure>
 <div>
 <h3>Mentre corri o pedali</h3>
 <ul>
@@ -66,33 +69,43 @@
 </article>
 
 <article class="screen">
-<div class="pair"><figure class="phone"><img src="img/detail.png" width="270" height="600" alt="Dettaglio di un'uscita in bici con mappa e grafici" loading="lazy"></figure>
-<figure class="crop"><img src="img/efforts.png" width="270" height="155" alt="Migliori prestazioni di una corsa, con due record personali" loading="lazy"></figure></div>
+<div class="pair"><figure class="device"><img src="img/detail-bike.jpg" width="540" height="1170" alt="Dettaglio di un giro in bici sul lago di Como con la linea colorata per velocità" loading="lazy"></figure>
+<figure class="crop"><img src="img/efforts.png" width="540" height="690" alt="Parziali km per km con dislivello, il km più veloce in arancio, e migliori prestazioni con due record personali" loading="lazy"></figure></div>
 <div>
 <h3>Dopo l'uscita</h3>
 <ul>
-<li>Il percorso su mappa OpenStreetMap.</li>
+<li>Il percorso su mappa OpenStreetMap, colorato per velocità: azzurro dove sei andato piano, rosso dove hai spinto.</li>
 <li>Distanza, tempo in movimento, passo o velocità media, dislivello.</li>
 <li>Grafici di passo e altitudine lungo il percorso.</li>
-<li>Parziali km per km, con una barra che mostra subito dove sei andato più forte.</li>
+<li>Parziali km per km con il dislivello di ogni km; il più veloce è evidenziato.</li>
 <li><strong>Migliori prestazioni</strong> su 1 km, 5 km, 10 km, mezza e maratona (in bici 5, 10, 20, 40 e 100 km), cercate in tutto il percorso e non solo dalla partenza. Se è un record personale lo vedi lì.</li>
-<li>Titolo automatico ("Corsa mattutina") che puoi cambiare, note, tipo modificabile.</li>
-<li>Immagine da condividere con percorso e numeri, ed export GPX.</li>
+<li>Se hai battuto un record te lo dice appena finisci.</li>
+<li>Titolo automatico ("Corsa mattutina") che puoi cambiare, note, tipo modificabile. Export GPX.</li>
 </ul>
 </div>
 </article>
 
 <article class="screen">
-<figure class="phone"><img src="img/stats.png" width="270" height="585" alt="Statistiche: chilometri delle ultime 12 settimane e totali" loading="lazy"></figure>
+<figure class="device"><img src="img/stats.png" width="270" height="585" alt="Statistiche: chilometri delle ultime 12 settimane e totali" loading="lazy"></figure>
 <div>
 <h3>Nel tempo</h3>
 <ul>
-<li>Lista delle uscite con la miniatura del percorso, filtrabile per corsa o bici.</li>
+<li>Obiettivo settimanale in km per la corsa e per la bici, con la barra sulla home.</li>
+<li>Lista delle uscite raggruppate per mese, con la miniatura del percorso e il segno dei record.</li>
 <li>Totali di settimana, mese, anno e di sempre.</li>
 <li>Chilometri delle ultime 12 settimane.</li>
 <li>Record personali: distanza più lunga, uscita più lunga, miglior media, miglior tempo su ogni distanza.</li>
 <li>Backup completo in un file ZIP e ripristino su un altro telefono.</li>
+<li>Pressione lunga sull'icona: Corsa o Bici partono subito.</li>
 </ul>
+</div>
+</article>
+
+<article class="screen share">
+<figure class="card-img"><img src="img/share.png" width="640" height="800" alt="Immagine da condividere: percorso colorato, titolo, distanza, tempo e passo" loading="lazy"></figure>
+<div>
+<h3>Da condividere</h3>
+<p>Un tocco su Condividi crea questa immagine e la passa all'app che scegli: WhatsApp, Instagram, una chat. Il percorso è disegnato in locale, senza mappa sotto, quindi non mostra il nome della via di casa tua.</p>
 </div>
 </article>
 </div></section>
@@ -108,9 +121,9 @@
 <div class="table"><table>
 <thead><tr><th scope="col">Verso</th><th scope="col">Quando</th><th scope="col">Cosa invia</th></tr></thead>
 <tbody>
-<tr><td>tile.openstreetmap.org</td><td>Quando apri il dettaglio di un'uscita</td><td>La richiesta dei riquadri di mappa della zona del percorso, come qualsiasi mappa web. Non la traccia.</td></tr>
+<tr><td>tile.openstreetmap.org</td><td>Apri il dettaglio di un'uscita</td><td>La richiesta dei riquadri di mappa della zona del percorso, come qualsiasi mappa web. Non la traccia.</td></tr>
 <tr><td>api.github.com</td><td>Al massimo una volta al giorno; si disattiva dal menu</td><td>Solo la domanda "qual è l'ultima versione?". Nessun dato tuo.</td></tr>
-<tr><td>github.com</td><td>Quando tocchi Installa su un aggiornamento</td><td>Il download del nuovo APK.</td></tr>
+<tr><td>github.com</td><td>Tocchi Installa su un aggiornamento</td><td>Il download del nuovo APK.</td></tr>
 </tbody>
 </table></div>
 <p>Nient'altro. Il GPS è acceso solo durante la registrazione. Le uscite sono nella memoria privata dell'app e sono escluse dal backup cloud di Google. Il codice è pubblico, quindi tutto questo si può verificare.</p>

@@ -22,9 +22,11 @@ class ChartView(ctx: Context, attrs: AttributeSet?) : View(ctx, attrs) {
     private var title = ""
     private var values: List<Double> = emptyList()
     private var label: (Double) -> String = { "" }
+    private var minRange = 0.0
 
-    fun set(title: String, values: List<Double>, label: (Double) -> String) {
-        this.title = title; this.values = values; this.label = label
+    /** [minRange]: scala minima, così 10 m di rumore GPS in pianura non sembrano una salita. */
+    fun set(title: String, values: List<Double>, minRange: Double = 0.0, label: (Double) -> String) {
+        this.title = title; this.values = values; this.label = label; this.minRange = minRange
         invalidate()
     }
 
@@ -33,7 +35,9 @@ class ChartView(ctx: Context, attrs: AttributeSet?) : View(ctx, attrs) {
         canvas.drawText(title, 0f, text.textSize, text)
         val top = text.textSize * 2
         val bottom = height - 4 * dp
-        val min = values.min(); val max = values.max()
+        val vMin = values.min(); val vMax = values.max()
+        val pad = maxOf(0.0, minRange - (vMax - vMin)) / 2
+        val min = vMin - pad; val max = vMax + pad
         val range = maxOf(max - min, 1e-9)
         val step = width.toFloat() / (values.size - 1)
         val path = Path()
@@ -43,7 +47,7 @@ class ChartView(ctx: Context, attrs: AttributeSet?) : View(ctx, attrs) {
         }
         canvas.drawPath(Path(path).apply { lineTo(width.toFloat(), bottom); lineTo(0f, bottom); close() }, fill)
         canvas.drawPath(path, line)
-        val maxLabel = label(max); val minLabel = label(min)
+        val maxLabel = label(vMax); val minLabel = label(vMin)
         canvas.drawText(maxLabel, width - text.measureText(maxLabel), text.textSize, text)
         canvas.drawText(minLabel, width - text.measureText(minLabel), bottom - 2 * dp, text)
     }
