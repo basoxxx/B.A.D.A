@@ -14,7 +14,7 @@ jobs:
       contents: write # per pubblicare la release
     env:
       KEYSTORE_B64: ${{ secrets.BADA_KEYSTORE_B64 }}
-      BADA_KEYSTORE_PASSWORD: ${{ secrets.BADA_KEYSTORE_PASSWORD }}
+      KEYSTORE_PW: ${{ secrets.BADA_KEYSTORE_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
 
@@ -32,8 +32,14 @@ jobs:
       - name: Chiave di firma
         if: env.KEYSTORE_B64 != ''
         run: |
-          echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/bada.p12"
+          # Spazi e a capo finiti nei secret copiando dal telefono non devono rompere la firma.
+          printf '%s' "$KEYSTORE_B64" | tr -d ' \t\r\n' | base64 -d > "$RUNNER_TEMP/bada.p12"
+          PW=$(printf '%s' "$KEYSTORE_PW" | tr -d ' \t\r\n')
+          echo "::add-mask::$PW"
           echo "BADA_KEYSTORE=$RUNNER_TEMP/bada.p12" >> "$GITHUB_ENV"
+          echo "BADA_KEYSTORE_PASSWORD=$PW" >> "$GITHUB_ENV"
+          keytool -list -keystore "$RUNNER_TEMP/bada.p12" -storetype pkcs12 -storepass "$PW" > /dev/null \
+            || { echo "::error::BADA_KEYSTORE_PASSWORD non apre BADA_KEYSTORE_B64: controlla di aver incollato la coppia giusta"; exit 1; }
 
       - name: Test e build
         run: gradle testDebugUnitTest assembleRelease
