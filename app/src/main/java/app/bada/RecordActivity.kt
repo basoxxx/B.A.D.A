@@ -61,9 +61,10 @@ class RecordActivity : Activity() {
         findViewById<TextView>(R.id.average).text = Format.average(run, m, ms).removeSuffix(" /km").removeSuffix(" km/h")
         findViewById<TextView>(R.id.status).text = when {
             TrackingService.paused -> "IN PAUSA"
+            // Prima di tutto: con il risparmio energetico il percorso viene a linee dritte.
+            GpsQuality.powerSaveLimitsGps(this) -> "RISPARMIO ENERGETICO ATTIVO: a schermo spento il GPS si ferma. Tocca qui"
             TrackingService.autoPaused -> "PAUSA AUTOMATICA  ·  riparte quando ti muovi"
             ev.none { it is Fix } -> "In attesa del segnale GPS"
-            GpsQuality.powerSaveLimitsGps(this) -> "RISPARMIO ENERGETICO ATTIVO: a schermo spento il GPS si ferma. Tocca qui"
             System.currentTimeMillis() - TrackingService.lastGpsAt > 15_000 ->
                 "Segnale GPS assente da ${(System.currentTimeMillis() - TrackingService.lastGpsAt) / 1000} s"
             else -> ""
