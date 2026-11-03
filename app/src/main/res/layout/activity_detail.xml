@@ -70,6 +70,22 @@
             android:textSize="15sp"
             android:visibility="gone" />
 
+        <!-- Pochi punti GPS: linea e passo in quei tratti sono stimati -->
+        <TextView
+            android:id="@+id/gps_notice"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:background="@drawable/banner_gold"
+            android:lineSpacingExtra="2dp"
+            android:paddingStart="14dp"
+            android:paddingTop="10dp"
+            android:paddingEnd="14dp"
+            android:paddingBottom="10dp"
+            android:textColor="@color/text"
+            android:textSize="14sp"
+            android:visibility="gone" />
+
         <TextView
             android:id="@+id/note"
             android:layout_width="match_parent"

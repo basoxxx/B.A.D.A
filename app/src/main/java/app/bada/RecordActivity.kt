@@ -30,6 +30,9 @@ class RecordActivity : Activity() {
                 .show()
         }
         if (savedInstanceState == null) Battery.askOnce(this)
+        findViewById<TextView>(R.id.status).setOnClickListener {
+            if (GpsQuality.powerSaveLimitsGps(this)) startActivity(Intent(android.provider.Settings.ACTION_BATTERY_SAVER_SETTINGS))
+        }
     }
 
     private fun stop() {
@@ -60,6 +63,9 @@ class RecordActivity : Activity() {
             TrackingService.paused -> "IN PAUSA"
             TrackingService.autoPaused -> "PAUSA AUTOMATICA  ·  riparte quando ti muovi"
             ev.none { it is Fix } -> "In attesa del segnale GPS"
+            GpsQuality.powerSaveLimitsGps(this) -> "RISPARMIO ENERGETICO ATTIVO: a schermo spento il GPS si ferma. Tocca qui"
+            System.currentTimeMillis() - TrackingService.lastGpsAt > 15_000 ->
+                "Segnale GPS assente da ${(System.currentTimeMillis() - TrackingService.lastGpsAt) / 1000} s"
             else -> ""
         }
         val now = if (TrackingService.paused || TrackingService.autoPaused) null else Track.recentMps(ev)

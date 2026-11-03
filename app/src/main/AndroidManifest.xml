@@ -6,6 +6,8 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Processore sveglio durante la registrazione: i punti GPS arrivano anche a schermo spento -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
     <!-- Esclusione dall'ottimizzazione batteria, chiesta all'utente: evita che il GPS si fermi nelle uscite lunghe -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <!-- Aggiornamenti dall'app (Android chiede sempre conferma) -->

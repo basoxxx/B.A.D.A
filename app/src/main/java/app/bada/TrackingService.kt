@@ -17,7 +17,9 @@ import android.location.LocationManager
 import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
+import android.os.Handler
 import android.os.Looper
+import android.os.PowerManager
 import java.io.File
 
 /** Registra il GPS in primo piano (funziona a schermo spento) e scrive ogni evento subito su file. */
@@ -30,7 +32,8 @@ class TrackingService : Service(), LocationListener {
         private const val ACTION_RESUME = "resume"
         private const val NOTIFY_EVERY_MS = 5000L
         private const val CHANNEL = "tracking"
-        private const val MAX_ACCURACY_M = 20f
+        /** Se il GPS tace per tanto così, si riaggancia (alcuni telefoni lo fermano senza dirlo). */
+        private const val WATCHDOG_MS = 30_000L
 
         // Stato live, toccato solo dal main thread (UI e callback GPS sul main looper).
         var file: File? = null
@@ -43,6 +46,9 @@ class TrackingService : Service(), LocationListener {
         /** In pausa automatica (fermo a un semaforo...): distinta dalla pausa manuale, riparte da sola. */
         var autoPaused = false
             private set
+        /** Ora dell'ultimo dato dal GPS (anche scartato): la UI avvisa se il segnale manca da un po'. */
+        var lastGpsAt = 0L
+            private set
         private var auto: AutoPause? = null
 
         /** Il servizio attivo ridisegna la notifica quando lo stato cambia (pausa dalla UI o dalla notifica). */
@@ -54,6 +60,7 @@ class TrackingService : Service(), LocationListener {
             val t = now()
             run = isRun
             paused = false
+            lastGpsAt = t
             autoPaused = false
             auto = if (Prefs.autoPause(ctx)) AutoPause(isRun) else null
             events.clear()
@@ -106,6 +113,17 @@ class TrackingService : Service(), LocationListener {
     private val lm by lazy { getSystemService(LocationManager::class.java) }
     private val nm by lazy { getSystemService(NotificationManager::class.java) }
     private var lastNotify = 0L
+    private var lastKept: Long? = null
+    /** Tiene sveglio il processore a schermo spento, come fanno i tracker maturi (OpenTracks): senza, alcuni telefoni consegnano i punti a raffiche o per niente. */
+    private var wakeLock: PowerManager.WakeLock? = null
+    private val handler = Handler(Looper.getMainLooper())
+    private val watchdog = object : Runnable {
+        override fun run() {
+            if (file == null) return
+            if (!paused && now() - lastGpsAt > WATCHDOG_MS) listen()
+            handler.postDelayed(this, WATCHDOG_MS / 2)
+        }
+    }
     private var voice: Voice? = null
     private var announced = 0
 
@@ -132,11 +150,31 @@ class TrackingService : Service(), LocationListener {
         if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             end(); return
         }
+        wakeLock = getSystemService(PowerManager::class.java)
+            .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Offtrack:registrazione")
+            .apply { setReferenceCounted(false); acquire(12 * 3_600_000L) } // tetto di sicurezza: 12 ore
+        lastKept = null
+        listen()
+        handler.postDelayed(watchdog, WATCHDOG_MS)
+    }
+
+    /** (Ri)aggancia il GPS: un punto al secondo, senza soglia di distanza. */
+    private fun listen() {
+        if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) return
+        lm.removeUpdates(this)
         lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000L, 0f, this, Looper.getMainLooper())
+        lastGpsAt = now() // si dà al GPS il tempo di rispondere prima di riprovare
+    }
+
+    private fun releaseResources() {
+        handler.removeCallbacks(watchdog)
+        wakeLock?.let { if (it.isHeld) it.release() }
+        wakeLock = null
     }
 
     private fun end() {
         onChange = null
+        releaseResources()
         voice?.shutdown(); voice = null
         lm.removeUpdates(this)
         close()
@@ -146,14 +184,18 @@ class TrackingService : Service(), LocationListener {
 
     override fun onDestroy() {
         onChange = null
+        releaseResources()
         voice?.shutdown(); voice = null
         lm.removeUpdates(this)
         super.onDestroy()
     }
 
     override fun onLocationChanged(loc: Location) {
-        if (file == null || paused) return
-        if (!loc.hasAccuracy() || loc.accuracy > MAX_ACCURACY_M) return
+        if (file == null) return
+        lastGpsAt = now()
+        if (paused) return
+        if (!loc.hasAccuracy() || !GpsQuality.accept(loc.accuracy, lastKept?.let { now() - it })) return
+        lastKept = now()
         val f = Fix(loc.latitude, loc.longitude, now(), if (loc.hasAltitude()) loc.altitude else null)
         when (val d = auto?.onFix(f) ?: AutoPause.Keep) {
             AutoPause.Ignore -> return

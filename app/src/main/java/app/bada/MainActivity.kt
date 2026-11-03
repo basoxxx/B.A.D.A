@@ -402,10 +402,23 @@ class MainActivity : Activity() {
         else toast("Serve il permesso di posizione precisa")
     }
 
-    private fun begin() {
+    private fun begin(ignorePowerSave: Boolean = false) {
         if (!getSystemService(LocationManager::class.java).isProviderEnabled(LocationManager.GPS_PROVIDER)) {
             toast("Attiva la posizione (GPS)")
             startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
+            return
+        }
+        if (!ignorePowerSave && GpsQuality.powerSaveLimitsGps(this)) {
+            AlertDialog.Builder(this)
+                .setTitle("Risparmio energetico attivo")
+                .setMessage(
+                    "Con il risparmio energetico il telefono spegne il GPS quando lo schermo è spento: " +
+                        "il percorso verrebbe registrato solo nei momenti in cui guardi il telefono, a linee dritte. " +
+                        "Disattivalo per questa uscita.",
+                )
+                .setPositiveButton("Disattiva") { _, _ -> startActivity(Intent(Settings.ACTION_BATTERY_SAVER_SETTINGS)) }
+                .setNegativeButton("Registra comunque") { _, _ -> begin(ignorePowerSave = true) }
+                .show()
             return
         }
         TrackingService.start(this, pendingRun)

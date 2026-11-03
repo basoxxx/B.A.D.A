@@ -59,6 +59,7 @@ class DetailActivity : Activity() {
         events = TrackStore.read(file)
         run = TrackStore.isRun(file)
         showHeader()
+        showGpsNotice()
         map = findViewById(R.id.map)
         map.setTileSource(TileSourceFactory.MAPNIK)
         map.setMultiTouchControls(true)
@@ -98,13 +99,15 @@ class DetailActivity : Activity() {
             menu.menu.add(0, 1, 0, "Modifica")
             menu.menu.add(0, 2, 1, "Condividi immagine")
             menu.menu.add(0, 3, 2, "Esporta GPX")
-            menu.menu.add(0, 4, 3, "Elimina")
+            menu.menu.add(0, 5, 3, "Qualità del GPS")
+            menu.menu.add(0, 4, 4, "Elimina")
             menu.setOnMenuItemClickListener {
                 when (it.itemId) {
                     1 -> edit()
                     2 -> share()
                     3 -> findViewById<Button>(R.id.export_gpx).performClick()
                     4 -> confirmDelete()
+                    5 -> showGpsReport()
                 }
                 true
             }
@@ -120,6 +123,35 @@ class DetailActivity : Activity() {
                     .setType("application/gpx+xml").putExtra(Intent.EXTRA_TITLE, name),
                 REQ_EXPORT_GPX,
             )
+        }
+    }
+
+    private fun showGpsReport() {
+        val r = GpsQuality.report(events)
+        val fmt = SimpleDateFormat("HH:mm", Locale.ITALY)
+        AlertDialog.Builder(this)
+            .setTitle("Qualità del GPS")
+            .setMessage(
+                "Punti registrati: ${r.points}\n" +
+                    "Un punto ogni ${String.format(Locale.ITALY, "%.1f", r.avgIntervalMs / 1000.0)} s in media\n" +
+                    "Buco più lungo: ${Format.duration(r.longestGapMs)}" + (r.gapStart?.let { " (dalle ${fmt.format(Date(it))})" } ?: "") +
+                    "\n\nCon un buon segnale c'è un punto al secondo. Buchi lunghi vengono quasi sempre dal risparmio " +
+                    "energetico o dall'ottimizzazione batteria, che fermano il GPS a schermo spento.",
+            )
+            .setPositiveButton("OK", null)
+            .show()
+    }
+
+    /** Se il GPS ha lasciato buchi lunghi lo si dice: altrimenti una linea dritta sembra un errore dell'app. */
+    private fun showGpsNotice() {
+        val r = GpsQuality.report(events)
+        if (r.longestGapMs < GpsQuality.WARN_GAP_MS) return
+        val from = r.gapStart?.let { " dalle " + SimpleDateFormat("HH:mm", Locale.ITALY).format(Date(it)) } ?: ""
+        findViewById<TextView>(R.id.gps_notice).apply {
+            text = "Il GPS ha dato pochi punti (buco di ${Spoken.duration(r.longestGapMs)}$from): in quei tratti linea, " +
+                "distanza e passo sono stimati. Succede quasi sempre con il risparmio energetico attivo. Tocca per i dettagli."
+            visibility = View.VISIBLE
+            setOnClickListener { showGpsReport() }
         }
     }
 
