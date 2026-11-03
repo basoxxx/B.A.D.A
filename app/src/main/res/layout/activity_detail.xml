@@ -14,11 +14,32 @@
         android:paddingEnd="16dp"
         android:paddingBottom="12dp">
 
-        <TextView
-            android:id="@+id/kind"
-            style="@style/Heading"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content" />
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <!-- Titolo: tocco per modificarlo -->
+            <TextView
+                android:id="@+id/title"
+                style="@style/Heading"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:maxLines="2"
+                android:textAllCaps="false"
+                android:textSize="22sp" />
+
+            <ImageButton
+                android:id="@+id/menu"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Altre azioni"
+                android:src="@drawable/ic_more" />
+        </LinearLayout>
 
         <TextView
             android:id="@+id/date"
@@ -26,6 +47,17 @@
             android:layout_height="wrap_content"
             android:textColor="@color/muted"
             android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/note"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:maxLines="4"
+            android:ellipsize="end"
+            android:textColor="@color/text"
+            android:textSize="14sp"
+            android:visibility="gone" />
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -102,6 +134,22 @@
                 android:layout_marginTop="8dp"
                 android:orientation="vertical" />
 
+            <TextView
+                android:id="@+id/efforts_title"
+                style="@style/Label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:text="Migliori prestazioni"
+                android:visibility="gone" />
+
+            <LinearLayout
+                android:id="@+id/efforts"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:orientation="vertical" />
+
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -109,22 +157,22 @@
                 android:orientation="horizontal">
 
                 <Button
-                    android:id="@+id/export_gpx"
-                    style="@style/Btn.Secondary"
+                    android:id="@+id/share"
+                    style="@style/Btn.Primary"
                     android:layout_width="0dp"
                     android:layout_height="52dp"
                     android:layout_marginEnd="6dp"
                     android:layout_weight="1"
-                    android:text="Esporta GPX" />
+                    android:text="Condividi" />
 
                 <Button
-                    android:id="@+id/delete"
+                    android:id="@+id/export_gpx"
                     style="@style/Btn.Secondary"
                     android:layout_width="0dp"
                     android:layout_height="52dp"
                     android:layout_marginStart="6dp"
                     android:layout_weight="1"
-                    android:text="Elimina" />
+                    android:text="Esporta GPX" />
             </LinearLayout>
         </LinearLayout>
     </ScrollView>

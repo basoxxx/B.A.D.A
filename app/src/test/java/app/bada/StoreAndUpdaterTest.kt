@@ -14,6 +14,8 @@ class StoreAndUpdaterTest {
         assertFalse(TrackStore.NAME.matches("tracks/1730000000000_RUN.csv"))
         assertFalse(TrackStore.NAME.matches("1730000000000_RUN.csv.tmp"))
         assertFalse(TrackStore.NAME.matches("evil.so"))
+        assertTrue(TrackStore.META.matches("1730000000000.meta"))
+        assertFalse(TrackStore.META.matches("../1730000000000.meta"))
     }
 
     @Test fun releaseCodeFromTag() {

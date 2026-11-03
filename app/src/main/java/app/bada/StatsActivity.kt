@@ -1,7 +1,6 @@
 package app.bada
 
 import android.app.Activity
-import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
@@ -35,7 +34,7 @@ class StatsActivity : Activity() {
         super.onResume()
         // Riletto a ogni ritorno: un'attività aperta da un record potrebbe essere stata eliminata.
         thread {
-            val loaded = load(this)
+            val loaded = Workouts.all(this)
             runOnUiThread { all = loaded; show() }
         }
     }
@@ -53,21 +52,37 @@ class StatsActivity : Activity() {
             row(totals, p.label, "$n  ·  ${Format.duration(t.ms)}", Format.distance(t.m), null)
         }
 
+        val weeks = Stats.weeks(acts)
+        val day = SimpleDateFormat("d MMM", Locale.ITALY)
+        val zone = java.time.ZoneId.systemDefault()
+        fun label(d: java.time.LocalDate) = day.format(Date(d.atStartOfDay(zone).toInstant().toEpochMilli()))
+        findViewById<BarsView>(R.id.weeks).set(weeks.map { it.second }, label(weeks.first().first), "Questa settimana") {
+            "max " + Format.distance(it)
+        }
+
         val records = findViewById<LinearLayout>(R.id.records)
         records.removeAllViews()
         val avg = Stats.bestAverage(acts)
-        val km = Stats.fastestKm(acts)
         val list = listOf(
             Triple("Distanza più lunga", Stats.longest(acts)) { r: Record -> Format.distance(r.value) },
             Triple("Uscita più lunga", Stats.longestTime(acts)) { r: Record -> Format.duration(r.value.toLong()) },
             Triple(if (run) "Miglior passo medio" else "Miglior velocità media", avg) { r: Record ->
                 Format.average(run, r.value * 1000, 1_000_000L)
             },
-            Triple("Km più veloce", km) { r: Record -> Format.average(run, 1000.0, r.value.toLong()) },
         )
         for ((title, rec, fmt) in list) {
             if (rec == null) row(records, title, "Ancora nessun dato", "--", null)
             else row(records, title, date(rec.workout.start), fmt(rec), rec.workout.file)
+        }
+
+        // Il miglior tempo su ogni distanza classica, preso anche da metà di un'uscita più lunga.
+        val efforts = findViewById<LinearLayout>(R.id.efforts)
+        efforts.removeAllViews()
+        for ((d, name) in Stats.efforts(run)) {
+            val best = Stats.podium(acts, d).firstOrNull()
+            if (best == null) row(efforts, name, "Ancora nessun dato", "--", null)
+            else row(efforts, name, date(best.workout.start) + "  ·  " + Format.average(run, d.toDouble(), best.value.toLong()),
+                Format.duration(best.value.toLong()), best.workout.file)
         }
     }
 
@@ -86,10 +101,6 @@ class StatsActivity : Activity() {
 
     companion object {
         const val EXTRA_RUN = "run"
-
-        fun load(ctx: Context): List<Workout> = TrackStore.list(ctx).filter { it != TrackingService.file }.map {
-            Workout.of(it.path, TrackStore.isRun(it), TrackStore.startMillis(it), TrackStore.read(it))
-        }
 
         /** Selettore a due o più scelte: quella attiva ha bordo e testo arancio. */
         fun selectable(v: View, selected: Boolean) {

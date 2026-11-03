@@ -4,14 +4,35 @@ import android.content.Context
 import java.io.File
 import java.io.InputStream
 import java.io.OutputStream
+import java.io.StringReader
+import java.io.StringWriter
+import java.util.Properties
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
 
-/** Un file CSV per uscita, solo nella memoria interna dell'app. */
+/** Titolo e note scelti dall'utente; titolo vuoto = titolo automatico. */
+data class Meta(val title: String = "", val note: String = "") {
+    fun format(): String = StringWriter().also { w ->
+        Properties().apply { setProperty("title", title); setProperty("note", note) }.store(w, null)
+    }.toString()
+
+    companion object {
+        fun parse(text: String): Meta {
+            val p = Properties().apply { load(StringReader(text)) }
+            return Meta(p.getProperty("title", "").trim(), p.getProperty("note", "").trim())
+        }
+    }
+}
+
+/**
+ * Un file CSV per uscita, solo nella memoria interna dell'app, più un file <inizio>.meta facoltativo
+ * con titolo e note: legato all'orario di inizio, non al tipo, così cambiare tipo non lo perde.
+ */
 object TrackStore {
     /** Solo questi nomi entrano dal backup: blocca percorsi tipo "../" (zip slip) e file estranei. */
     val NAME = Regex("\\d{10,15}_(RUN|BIKE)\\.csv")
+    val META = Regex("\\d{10,15}\\.meta")
 
     fun dir(ctx: Context) = File(ctx.filesDir, "tracks").apply { mkdirs() }
 
@@ -39,8 +60,32 @@ object TrackStore {
         return true
     }
 
+    private fun metaFile(file: File) = File(file.parentFile, "${file.name.substringBefore('_')}.meta")
+
+    fun readMeta(file: File): Meta = metaFile(file).let { if (it.exists()) Meta.parse(it.readText()) else Meta() }
+
+    fun writeMeta(file: File, meta: Meta) {
+        val f = metaFile(file)
+        if (meta == Meta()) f.delete() else writeAtomically(f) { it.write(meta.format().toByteArray()) }
+    }
+
+    /** Titolo da mostrare: quello scelto o quello automatico. */
+    fun title(file: File, meta: Meta = readMeta(file)) = meta.title.ifEmpty { Spoken.defaultTitle(isRun(file), startMillis(file)) }
+
+    /** Cambia tipo rinominando il file; ritorna il nuovo file (o quello vecchio se il nome è già occupato). */
+    fun setRun(file: File, run: Boolean): File {
+        if (isRun(file) == run) return file
+        val dest = File(file.parentFile, name(run, startMillis(file)))
+        return if (!dest.exists() && file.renameTo(dest)) dest else file
+    }
+
+    fun delete(file: File) {
+        file.delete()
+        metaFile(file).delete()
+    }
+
     fun exportZip(ctx: Context, out: OutputStream) = ZipOutputStream(out).use { z ->
-        for (f in list(ctx)) {
+        for (f in list(ctx).flatMap { listOf(it, metaFile(it)) }.filter { it.exists() }) {
             z.putNextEntry(ZipEntry(f.name))
             f.inputStream().use { it.copyTo(z) }
             z.closeEntry()
@@ -53,11 +98,11 @@ object TrackStore {
         ZipInputStream(input).use { z ->
             while (true) {
                 val entry = z.nextEntry ?: break
-                if (entry.isDirectory || !NAME.matches(entry.name)) continue
+                if (entry.isDirectory || !(NAME.matches(entry.name) || META.matches(entry.name))) continue
                 val dest = File(dir(ctx), entry.name)
                 if (dest.exists()) continue
                 writeAtomically(dest) { z.copyTo(it) }
-                added++
+                if (NAME.matches(entry.name)) added++
             }
         }
         return added

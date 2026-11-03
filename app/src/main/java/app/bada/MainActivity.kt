@@ -18,7 +18,6 @@ import android.widget.ListView
 import android.widget.PopupMenu
 import android.widget.TextView
 import android.widget.Toast
-import java.io.File
 import java.text.SimpleDateFormat
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -29,10 +28,6 @@ import java.util.Locale
 import kotlin.concurrent.thread
 
 class MainActivity : Activity() {
-    private class Item(
-        val file: File, val run: Boolean, val start: Long, val m: Double, val ms: Long, val route: List<List<Fix>>,
-    )
-
     private companion object {
         const val REQ_EXPORT_BACKUP = 1
         const val REQ_IMPORT_BACKUP = 2
@@ -44,10 +39,12 @@ class MainActivity : Activity() {
         const val MENU_CHECK = 5
         const val MENU_STATS = 6
         const val MENU_BATTERY = 7
+        const val MENU_AUTOPAUSE = 8
+        const val MENU_VOICE = 9
     }
 
     private var pendingRun = true
-    private var items: List<Item> = emptyList()
+    private var items: List<Workout> = emptyList()
     /** Filtro della lista: null = tutte, true = corsa, false = bici. Ricordato tra un avvio e l'altro. */
     private var filter: Boolean? = null
 
@@ -60,7 +57,7 @@ class MainActivity : Activity() {
             startActivity(Intent(this, RecordActivity::class.java))
         }
         findViewById<ListView>(R.id.list).setOnItemClickListener { _, _, pos, _ ->
-            startActivity(Intent(this, DetailActivity::class.java).putExtra(DetailActivity.EXTRA_FILE, items[pos].file.path))
+            startActivity(Intent(this, DetailActivity::class.java).putExtra(DetailActivity.EXTRA_FILE, items[pos].file))
         }
         findViewById<View>(R.id.menu).setOnClickListener(::showMenu)
         findViewById<View>(R.id.week_card).setOnClickListener { openStats() }
@@ -107,21 +104,31 @@ class MainActivity : Activity() {
 
     private fun openStats() = startActivity(Intent(this, StatsActivity::class.java).putExtra(StatsActivity.EXTRA_RUN, filter != false))
 
+    /** I riepiloghi si calcolano in background: la prima volta, con molte uscite, ci vuole qualche secondo. */
     private fun refresh() {
+        val f = filter
+        thread {
+            val all = Workouts.all(this)
+            runOnUiThread { if (!isFinishing && f == filter) show(all.filter { f == null || it.run == f }) }
+        }
+    }
+
+    private fun show(list: List<Workout>) {
         val recording = TrackingService.file
-        items = TrackStore.list(this).filter { it != recording && (filter == null || TrackStore.isRun(it) == filter) }.map(::item)
+        items = list
         StatsActivity.selectable(findViewById(R.id.filter_all), filter == null)
         StatsActivity.selectable(findViewById(R.id.filter_run), filter == true)
         StatsActivity.selectable(findViewById(R.id.filter_bike), filter == false)
-        findViewById<ListView>(R.id.list).adapter = object : ArrayAdapter<Item>(this, 0, items) {
+        findViewById<ListView>(R.id.list).adapter = object : ArrayAdapter<Workout>(this, 0, items) {
             override fun getView(pos: Int, convertView: View?, parent: ViewGroup): View {
                 val v = convertView ?: layoutInflater.inflate(R.layout.item_activity, parent, false)
                 val it = items[pos]
                 v.findViewById<TextView>(R.id.title).text = "${kind(it.run)}  ·  ${date(it.start)}"
+                v.findViewById<TextView>(R.id.name).text = it.title
                 v.findViewById<TextView>(R.id.distance).text = Format.distance(it.m)
                 v.findViewById<TextView>(R.id.stats).text =
                     "${Format.duration(it.ms)}   ${Format.average(it.run, it.m, it.ms)}"
-                v.findViewById<RouteView>(R.id.route).setRoute(it.route)
+                v.findViewById<RouteView>(R.id.route).setRoute(it.thumb)
                 return v
             }
         }
@@ -147,19 +154,6 @@ class MainActivity : Activity() {
         value?.let { v.findViewById<TextView>(R.id.value).text = it }
     }
 
-    private fun item(f: File): Item {
-        val ev = TrackStore.read(f)
-        // Per la miniatura bastano ~100 punti a segmento: tiene bassa la memoria con molte uscite.
-        val route = Track.segments(ev).map { seg ->
-            val step = seg.size / 100 + 1
-            seg.filterIndexed { i, _ -> i % step == 0 || i == seg.lastIndex }
-        }
-        return Item(
-            f, TrackStore.isRun(f), TrackStore.startMillis(f), Track.distanceM(ev),
-            if (ev.isEmpty()) 0L else Track.activeMs(ev), route,
-        )
-    }
-
     private fun kind(run: Boolean) = if (run) "Corsa" else "Bici"
     private fun date(t: Long) = SimpleDateFormat("EEE d MMM, HH:mm", Locale.ITALY).format(Date(t))
 
@@ -171,6 +165,8 @@ class MainActivity : Activity() {
         menu.menu.add(0, MENU_EXPORT, 1, "Esporta backup")
         menu.menu.add(0, MENU_IMPORT, 2, "Importa backup")
         menu.menu.add(0, MENU_GPX, 3, "Importa GPX")
+        menu.menu.add(0, MENU_AUTOPAUSE, 4, "Pausa automatica").setCheckable(true).isChecked = Prefs.autoPause(this)
+        menu.menu.add(0, MENU_VOICE, 4, "Avvisi vocali").setCheckable(true).isChecked = Prefs.voice(this)
         menu.menu.add(0, MENU_BATTERY, 4, "Ottimizzazione batteria")
         menu.menu.add(0, MENU_UPDATES, 5, "Aggiornamenti automatici").setCheckable(true).isChecked = Updater.isEnabled(this)
         menu.menu.add(0, MENU_CHECK, 6, "Cerca aggiornamenti  (versione ${BuildConfig.VERSION_NAME})")
@@ -184,6 +180,12 @@ class MainActivity : Activity() {
                 MENU_IMPORT -> startActivityForResult(openDocument(multiple = false), REQ_IMPORT_BACKUP)
                 MENU_GPX -> startActivityForResult(openDocument(multiple = true), REQ_IMPORT_GPX)
                 MENU_STATS -> openStats()
+                MENU_AUTOPAUSE -> Prefs.setAutoPause(this, !Prefs.autoPause(this)).also {
+                    toast(if (Prefs.autoPause(this)) "Pausa automatica attiva: si ferma quando ti fermi" else "Pausa automatica disattivata")
+                }
+                MENU_VOICE -> Prefs.setVoice(this, !Prefs.voice(this)).also {
+                    toast(if (Prefs.voice(this)) "Avvisi vocali attivi: ogni km in corsa, ogni 5 km in bici" else "Avvisi vocali disattivati")
+                }
                 MENU_BATTERY -> if (Battery.isExempt(this)) toast("Offtrack è già esclusa dall'ottimizzazione batteria")
                     else Battery.request(this)
                 MENU_UPDATES -> Updater.setEnabled(this, !Updater.isEnabled(this))

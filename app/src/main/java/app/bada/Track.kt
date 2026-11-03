@@ -117,6 +117,41 @@ object Track {
         }
     }
 
+    /**
+     * Migliori prestazioni, come Strava: per ogni distanza il tempo più breve su un tratto qualsiasi
+     * dell'uscita (non solo dal km 0), con interpolazione all'inizio del tratto. Le pause non contano.
+     */
+    fun bestEfforts(events: List<Event>, distances: List<Int>): Map<Int, Long> = bestEfforts(profile(events), distances)
+
+    @JvmName("bestEffortsOfProfile")
+    fun bestEfforts(p: List<Sample>, distances: List<Int>): Map<Int, Long> {
+        val out = linkedMapOf<Int, Long>()
+        val total = p.lastOrNull()?.m ?: return out
+        for (d in distances) {
+            if (d <= 0 || total < d) continue
+            var best = Double.MAX_VALUE
+            var i = 0
+            for (j in p.indices) {
+                if (p[j].m < d) continue
+                val target = p[j].m - d
+                while (i + 1 < j && p[i + 1].m <= target) i++
+                val a = p[i]; val b = p[i + 1]
+                val k = if (b.m > a.m) ((target - a.m) / (b.m - a.m)).coerceIn(0.0, 1.0) else 0.0
+                best = minOf(best, p[j].ms - (a.ms + (b.ms - a.ms) * k))
+            }
+            out[d] = best.roundToLong()
+        }
+        return out
+    }
+
+    /** Velocità degli ultimi [windowMs] di movimento in m/s; null all'inizio, quando i dati non bastano. */
+    fun recentMps(events: List<Event>, windowMs: Long = 30_000): Double? {
+        val p = profile(events)
+        val last = p.lastOrNull() ?: return null
+        val first = p.lastOrNull { last.ms - it.ms >= windowMs } ?: return null
+        return (last.m - first.m) / ((last.ms - first.ms) / 1000.0)
+    }
+
     /** Dislivello positivo dalle altitudini già mediate del grafico (quelle grezze gonfiano il totale). */
     fun climbM(points: List<ChartPoint>): Double =
         points.mapNotNull { it.alt }.zipWithNext().sumOf { (a, b) -> maxOf(0.0, b - a) }

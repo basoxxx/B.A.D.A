@@ -61,6 +61,13 @@
         <activity android:name=".DetailActivity" />
         <activity android:name=".StatsActivity" />
 
+        <!-- Immagine da condividere: solo lettura, solo per le app a cui viene passata -->
+        <provider
+            android:name=".ShareProvider"
+            android:authorities="app.bada.share"
+            android:exported="false"
+            android:grantUriPermissions="true" />
+
         <service
             android:name=".TrackingService"
             android:exported="false"

@@ -58,9 +58,15 @@ class RecordActivity : Activity() {
         findViewById<TextView>(R.id.average).text = Format.average(run, m, ms).removeSuffix(" /km").removeSuffix(" km/h")
         findViewById<TextView>(R.id.status).text = when {
             TrackingService.paused -> "IN PAUSA"
+            TrackingService.autoPaused -> "PAUSA AUTOMATICA  ·  riparte quando ti muovi"
             ev.none { it is Fix } -> "In attesa del segnale GPS"
             else -> ""
         }
+        val now = if (TrackingService.paused || TrackingService.autoPaused) null else Track.recentMps(ev)
+        findViewById<TextView>(R.id.current).text = (if (run) "Passo attuale  " else "Velocità attuale  ") +
+            (now?.takeIf { it > 0 }?.let { Format.average(run, it * 1000, 1_000_000L) } ?: "--")
+        // shortcut: ridisegna tutti i punti ogni secondo; con uscite molto lunghe ridurre come per la miniatura.
+        findViewById<RouteView>(R.id.route).setRoute(Track.segments(ev))
         findViewById<Button>(R.id.pause).text = if (TrackingService.paused) "Riprendi" else "Pausa"
     }
 }

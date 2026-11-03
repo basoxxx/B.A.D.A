@@ -13,7 +13,7 @@
       var apk = (latest.assets || []).filter(function (a) { return a.name === "offtrack.apk"; })[0];
       var size = apk ? " · " + (apk.size / 1048576).toLocaleString("it-IT", { maximumFractionDigits: 1 }) + " MB" : "";
       document.getElementById("version").textContent =
-        "Versione " + latest.tag_name.replace(/^v/, "") + " del " + date(latest.published_at) + size + " · Android 8.0 o successivo · Gratis";
+        "Versione " + latest.tag_name.replace(/^v/, "") + ", " + date(latest.published_at) + size.replace(" · ", ", ") + ". Android 8.0 o successivo.";
 
       var box = document.getElementById("releases");
       var footer = box.lastElementChild;
@@ -21,15 +21,16 @@
         // Le note sono il messaggio del commit: prima riga titolo, poi i paragrafi.
         var parts = (r.body || "").replace(/\r/g, "").split(/\n\s*\n/);
         var art = document.createElement("article");
-        art.className = "card release";
+        art.className = "release";
         var meta = document.createElement("p");
-        meta.className = "label";
-        meta.textContent = r.tag_name.replace(/^v/, "Versione ") + " · " + date(r.published_at);
+        meta.className = "when";
+        meta.textContent = r.tag_name.replace(/^v/, "Versione ") + ", " + date(r.published_at);
         var h = document.createElement("h3");
         h.textContent = parts[0] || r.name;
         art.appendChild(meta);
         art.appendChild(h);
         parts.slice(1).forEach(function (para) {
+          // Solo le parti per chi usa l'app: niente righe tecniche del commit.
           if (/^(Co-Authored-By|Claude-Session|Verifica):/m.test(para)) return;
           var p = document.createElement("p");
           p.textContent = para.replace(/\n/g, " ");

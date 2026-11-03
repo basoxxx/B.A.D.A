@@ -28,6 +28,16 @@
         android:gravity="center"
         android:orientation="vertical">
 
+        <!-- Forma del percorso dal vivo, disegnata in locale: nessuna mappa, nessuna rete -->
+        <app.bada.RouteView
+            android:id="@+id/route"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="16dp"
+            android:layout_weight="1"
+            android:background="@drawable/route_bg" />
+
         <TextView
             style="@style/Label"
             android:layout_width="wrap_content"
@@ -39,13 +49,13 @@
             style="@style/Value"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textSize="72sp" />
+            android:textSize="64sp" />
 
         <View
             android:layout_width="match_parent"
             android:layout_height="1dp"
-            android:layout_marginTop="24dp"
-            android:layout_marginBottom="24dp"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="16dp"
             android:background="@color/border" />
 
         <LinearLayout
@@ -95,6 +105,17 @@
                     android:textSize="40sp" />
             </LinearLayout>
         </LinearLayout>
+
+        <!-- Passo o velocità degli ultimi 30 secondi -->
+        <TextView
+            android:id="@+id/current"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="16dp"
+            android:fontFamily="sans-serif-condensed"
+            android:textColor="@color/muted"
+            android:textSize="18sp" />
     </LinearLayout>
 
     <LinearLayout

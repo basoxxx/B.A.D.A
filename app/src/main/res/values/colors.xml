@@ -8,4 +8,7 @@
     <color name="accent_pressed">#E64A19</color>
     <color name="text">#FFFFFF</color>
     <color name="muted">#93A0B5</color>
+    <color name="gold">#FFC53D</color>
+    <color name="silver">#C9D3E3</color>
+    <color name="bronze">#D98A4E</color>
 </resources>
