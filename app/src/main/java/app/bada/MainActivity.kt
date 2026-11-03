@@ -42,10 +42,14 @@ class MainActivity : Activity() {
         const val MENU_GPX = 3
         const val MENU_UPDATES = 4
         const val MENU_CHECK = 5
+        const val MENU_STATS = 6
+        const val MENU_BATTERY = 7
     }
 
     private var pendingRun = true
     private var items: List<Item> = emptyList()
+    /** Filtro della lista: null = tutte, true = corsa, false = bici. Ricordato tra un avvio e l'altro. */
+    private var filter: Boolean? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -59,6 +63,11 @@ class MainActivity : Activity() {
             startActivity(Intent(this, DetailActivity::class.java).putExtra(DetailActivity.EXTRA_FILE, items[pos].file.path))
         }
         findViewById<View>(R.id.menu).setOnClickListener(::showMenu)
+        findViewById<View>(R.id.week_card).setOnClickListener { openStats() }
+        filter = when (getPreferences(MODE_PRIVATE).getString("filter", "all")) { "run" -> true; "bike" -> false; else -> null }
+        findViewById<View>(R.id.filter_all).setOnClickListener { setFilter(null) }
+        findViewById<View>(R.id.filter_run).setOnClickListener { setFilter(true) }
+        findViewById<View>(R.id.filter_bike).setOnClickListener { setFilter(false) }
         stat(R.id.week_distance, "Distanza")
         stat(R.id.week_time, "Tempo")
         stat(R.id.week_count, "Attività")
@@ -90,9 +99,20 @@ class MainActivity : Activity() {
         refresh()
     }
 
+    private fun setFilter(f: Boolean?) {
+        filter = f
+        getPreferences(MODE_PRIVATE).edit().putString("filter", when (f) { true -> "run"; false -> "bike"; null -> "all" }).apply()
+        refresh()
+    }
+
+    private fun openStats() = startActivity(Intent(this, StatsActivity::class.java).putExtra(StatsActivity.EXTRA_RUN, filter != false))
+
     private fun refresh() {
         val recording = TrackingService.file
-        items = TrackStore.list(this).filter { it != recording }.map(::item)
+        items = TrackStore.list(this).filter { it != recording && (filter == null || TrackStore.isRun(it) == filter) }.map(::item)
+        StatsActivity.selectable(findViewById(R.id.filter_all), filter == null)
+        StatsActivity.selectable(findViewById(R.id.filter_run), filter == true)
+        StatsActivity.selectable(findViewById(R.id.filter_bike), filter == false)
         findViewById<ListView>(R.id.list).adapter = object : ArrayAdapter<Item>(this, 0, items) {
             override fun getView(pos: Int, convertView: View?, parent: ViewGroup): View {
                 val v = convertView ?: layoutInflater.inflate(R.layout.item_activity, parent, false)
@@ -105,13 +125,17 @@ class MainActivity : Activity() {
                 return v
             }
         }
-        findViewById<TextView>(R.id.empty).visibility = if (items.isEmpty()) View.VISIBLE else View.GONE
+        val empty = findViewById<TextView>(R.id.empty)
+        empty.visibility = if (items.isEmpty()) View.VISIBLE else View.GONE
+        empty.text = if (filter == null) "Nessuna attività registrata.\nI dati restano solo su questo telefono."
+        else "Nessuna attività di questo tipo."
         findViewById<View>(R.id.start_buttons).visibility = if (recording == null) View.VISIBLE else View.GONE
         findViewById<View>(R.id.back_to_recording).visibility = if (recording != null) View.VISIBLE else View.GONE
 
         val monday = LocalDate.now().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
             .atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
         val week = items.filter { it.start >= monday }
+        findViewById<TextView>(R.id.week_title).text = "Questa settimana" + when (filter) { true -> " · Corsa"; false -> " · Bici"; null -> "" }
         stat(R.id.week_distance, null, Format.distance(week.sumOf { it.m }))
         stat(R.id.week_time, null, Format.duration(week.sumOf { it.ms }))
         stat(R.id.week_count, null, week.size.toString())
@@ -143,11 +167,13 @@ class MainActivity : Activity() {
 
     private fun showMenu(anchor: View) {
         val menu = PopupMenu(this, anchor)
-        menu.menu.add(0, MENU_EXPORT, 0, "Esporta backup")
-        menu.menu.add(0, MENU_IMPORT, 1, "Importa backup")
-        menu.menu.add(0, MENU_GPX, 2, "Importa GPX")
-        menu.menu.add(0, MENU_UPDATES, 3, "Aggiornamenti automatici").setCheckable(true).isChecked = Updater.isEnabled(this)
-        menu.menu.add(0, MENU_CHECK, 4, "Cerca aggiornamenti  (versione ${BuildConfig.VERSION_NAME})")
+        menu.menu.add(0, MENU_STATS, 0, "Statistiche e record")
+        menu.menu.add(0, MENU_EXPORT, 1, "Esporta backup")
+        menu.menu.add(0, MENU_IMPORT, 2, "Importa backup")
+        menu.menu.add(0, MENU_GPX, 3, "Importa GPX")
+        menu.menu.add(0, MENU_BATTERY, 4, "Ottimizzazione batteria")
+        menu.menu.add(0, MENU_UPDATES, 5, "Aggiornamenti automatici").setCheckable(true).isChecked = Updater.isEnabled(this)
+        menu.menu.add(0, MENU_CHECK, 6, "Cerca aggiornamenti  (versione ${BuildConfig.VERSION_NAME})")
         menu.setOnMenuItemClickListener {
             when (it.itemId) {
                 MENU_EXPORT -> startActivityForResult(
@@ -157,6 +183,9 @@ class MainActivity : Activity() {
                 )
                 MENU_IMPORT -> startActivityForResult(openDocument(multiple = false), REQ_IMPORT_BACKUP)
                 MENU_GPX -> startActivityForResult(openDocument(multiple = true), REQ_IMPORT_GPX)
+                MENU_STATS -> openStats()
+                MENU_BATTERY -> if (Battery.isExempt(this)) toast("Offtrack è già esclusa dall'ottimizzazione batteria")
+                    else Battery.request(this)
                 MENU_UPDATES -> Updater.setEnabled(this, !Updater.isEnabled(this))
                 MENU_CHECK -> Updater.check(this, force = true) { r, err ->
                     showUpdate(r)

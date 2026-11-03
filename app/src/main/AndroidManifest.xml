@@ -6,6 +6,8 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Esclusione dall'ottimizzazione batteria, chiesta all'utente: evita che il GPS si fermi nelle uscite lunghe -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <!-- Aggiornamenti dall'app (Android chiede sempre conferma) -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <!-- Tile della mappa nel dettaglio e controllo aggiornamenti su GitHub -->
@@ -57,6 +59,7 @@
             android:name=".RecordActivity"
             android:launchMode="singleTop" />
         <activity android:name=".DetailActivity" />
+        <activity android:name=".StatsActivity" />
 
         <service
             android:name=".TrackingService"

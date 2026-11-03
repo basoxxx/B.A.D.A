@@ -29,6 +29,7 @@ class RecordActivity : Activity() {
                 .setNegativeButton("Continua", null)
                 .show()
         }
+        if (savedInstanceState == null) Battery.askOnce(this)
     }
 
     private fun stop() {

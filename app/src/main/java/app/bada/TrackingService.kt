@@ -10,6 +10,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
+import android.graphics.drawable.Icon
 import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
@@ -25,6 +26,9 @@ class TrackingService : Service(), LocationListener {
     companion object {
         private const val ACTION_START = "start"
         private const val ACTION_STOP = "stop"
+        private const val ACTION_PAUSE = "pause"
+        private const val ACTION_RESUME = "resume"
+        private const val NOTIFY_EVERY_MS = 5000L
         private const val CHANNEL = "tracking"
         private const val MAX_ACCURACY_M = 20f
 
@@ -36,6 +40,9 @@ class TrackingService : Service(), LocationListener {
             private set
         var run = true
             private set
+
+        /** Il servizio attivo ridisegna la notifica quando lo stato cambia (pausa dalla UI o dalla notifica). */
+        private var onChange: (() -> Unit)? = null
 
         /** Lo stato nasce subito, così la UI lo vede prima che il servizio parta. */
         fun start(ctx: Context, isRun: Boolean) {
@@ -63,8 +70,8 @@ class TrackingService : Service(), LocationListener {
             paused = false
         }
 
-        fun pause() { if (file != null && !paused) { paused = true; record(Mark("pause", now())) } }
-        fun resume() { if (file != null && paused) { paused = false; record(Mark("resume", now())) } }
+        fun pause() { if (file != null && !paused) { paused = true; record(Mark("pause", now())); onChange?.invoke() } }
+        fun resume() { if (file != null && paused) { paused = false; record(Mark("resume", now())); onChange?.invoke() } }
 
         private fun now() = System.currentTimeMillis()
 
@@ -75,6 +82,8 @@ class TrackingService : Service(), LocationListener {
     }
 
     private val lm by lazy { getSystemService(LocationManager::class.java) }
+    private val nm by lazy { getSystemService(NotificationManager::class.java) }
+    private var lastNotify = 0L
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -82,14 +91,18 @@ class TrackingService : Service(), LocationListener {
         when (intent?.action) {
             ACTION_START -> begin()
             ACTION_STOP -> end()
+            ACTION_PAUSE -> pause()
+            ACTION_RESUME -> resume()
             else -> stopSelf() // riavvio di sistema senza intent: la traccia parziale è già su disco
         }
         return START_NOT_STICKY
     }
 
     private fun begin() {
-        if (Build.VERSION.SDK_INT >= 29) startForeground(1, notification(run), ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION)
-        else startForeground(1, notification(run))
+        nm.createNotificationChannel(NotificationChannel(CHANNEL, "Registrazione", NotificationManager.IMPORTANCE_LOW))
+        if (Build.VERSION.SDK_INT >= 29) startForeground(1, notification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION)
+        else startForeground(1, notification())
+        onChange = { updateNotification() }
         if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             end(); return
         }
@@ -97,6 +110,7 @@ class TrackingService : Service(), LocationListener {
     }
 
     private fun end() {
+        onChange = null
         lm.removeUpdates(this)
         close()
         stopForeground(STOP_FOREGROUND_REMOVE)
@@ -104,6 +118,7 @@ class TrackingService : Service(), LocationListener {
     }
 
     override fun onDestroy() {
+        onChange = null
         lm.removeUpdates(this)
         super.onDestroy()
     }
@@ -112,6 +127,11 @@ class TrackingService : Service(), LocationListener {
         if (file == null || paused) return
         if (!loc.hasAccuracy() || loc.accuracy > MAX_ACCURACY_M) return
         record(Fix(loc.latitude, loc.longitude, now(), if (loc.hasAltitude()) loc.altitude else null))
+        if (now() - lastNotify >= NOTIFY_EVERY_MS) updateNotification()
+    }
+
+    private fun updateNotification() {
+        if (file != null) nm.notify(1, notification())
     }
 
     // Su API < 30 questi metodi non hanno implementazione di default.
@@ -120,17 +140,33 @@ class TrackingService : Service(), LocationListener {
     @Deprecated("API < 29")
     override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {}
 
-    private fun notification(isRun: Boolean): Notification {
-        val nm = getSystemService(NotificationManager::class.java)
-        nm.createNotificationChannel(NotificationChannel(CHANNEL, "Registrazione", NotificationManager.IMPORTANCE_LOW))
+    /** Tempo che scorre da solo (cronometro di sistema), distanza e media, e il pulsante Pausa/Riprendi. */
+    private fun notification(): Notification {
+        lastNotify = now()
+        val ms = Track.activeMs(events, now())
+        val m = Track.distanceM(events)
         val open = PendingIntent.getActivity(
             this, 0, Intent(this, RecordActivity::class.java), PendingIntent.FLAG_IMMUTABLE,
         )
-        return Notification.Builder(this, CHANNEL)
+        val toggle = PendingIntent.getService(
+            this, 1, Intent(this, TrackingService::class.java).setAction(if (paused) ACTION_RESUME else ACTION_PAUSE),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+        val kind = if (run) "Corsa" else "Bici"
+        val b = Notification.Builder(this, CHANNEL)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle(if (isRun) "Corsa in registrazione" else "Bici in registrazione")
+            .setColor(getColor(R.color.accent))
             .setContentIntent(open)
             .setOngoing(true)
-            .build()
+            .setOnlyAlertOnce(true)
+            .setContentText("${Format.distance(m)}  ·  ${Format.average(run, m, ms)}")
+            .addAction(
+                Notification.Action.Builder(
+                    Icon.createWithResource(this, R.drawable.ic_notification), if (paused) "Riprendi" else "Pausa", toggle,
+                ).build(),
+            )
+        if (paused) b.setContentTitle("$kind in pausa  ·  ${Format.duration(ms)}").setShowWhen(false)
+        else b.setContentTitle(kind).setUsesChronometer(true).setWhen(System.currentTimeMillis() - ms).setShowWhen(true)
+        return b.build()
     }
 }
